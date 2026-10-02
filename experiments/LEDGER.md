@@ -24,7 +24,7 @@ Status vocabulary: PLANNED / RUNNING / KEEP / REJECT / INCONCLUSIVE.
 | EXP-0002 | Patch 0002 (direct single-request attention, regime 2) removes split/combine fixed cost for contexts <= 4096 tokens | RUNNING | EXP-0001 | same build, `EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097` | — | — | — |
 | EXP-0003 | Patch 0003 (persistent decode buffers) removes ~168 allocations/step and stabilises replay pointers | REJECT (no measurable effect) | EXP-0002 | `patches/0003-static-decode-buffers.patch` | `EXP-0003-static-buffers/results/EXP-0003-buffers-on` | within +-1% on every workload | n/a |
 | EXP-0004 | Patch 0004 fixes the direct-attention configure path (combine kernel optional) | KEEP (prerequisite) | EXP-0002 | `patches/0004-direct-attention-combine-optional.patch` | build log | regime 2 configures instead of raising | n/a |
-| EXP-0005 | Patch 0005 makes the direct-attention bound a precise live-token count | RUNNING | EXP-0002 | `patches/0005-direct-attention-live-length-gate.patch` | `EXP-0002-direct-attention/results/EXP-0005-gate512` | — | — |
+| EXP-0005 | Patch 0005 makes the direct-attention bound a precise live-token count | REJECT (correctness) | EXP-0002 | `patches/0005-direct-attention-live-length-gate.patch` | `EXP-0002-direct-attention/results/EXP-0005-gate512` | recovers all coarse-gate losses, keeps SS -3.6% | net ~neutral (SS -3.6%, SM +2%, rest parity) |
 
 ## EXP-0000 results (measured)
 
@@ -139,6 +139,22 @@ the headline `decode_tok_s` carries a session-varying tail (LM moved 88.4 ->
   every workload's ITL median.
 - **EXP-0004** (the configure fix): KEEP as a prerequisite (without it every
   regime-2 call raises).
+- **EXP-0005** (precise live-token gate, 512): REJECT on correctness. It fixes
+  the performance problem completely (SL 10.34 -> 8.33, MS 11.51 -> 8.08,
+  MM 12.06 -> 8.06, ML 14.16 -> 8.10 ms/step, SS keeps 7.56 vs 7.84) and
+  restores 104/117 token-identical runs, but SM still flips a greedy token at
+  index 73 in 13/13 runs. With the attention reduction order changed, token
+  identity cannot be guaranteed, so the change does not meet the
+  no-quality-loss bar.
+
+**Accepted revision for this program: patch 0001 only** (plus 0004, inert
+without 0002). Measured cumulative effect vs the frozen baseline: no
+regression, no measurable speedup, 117/117 token-identical.
+
+**Reproducibility controls**: the unpatched wheel re-run reproduces the frozen
+session exactly (39/39 on SM/LM/LL); the candidate with direct OFF reproduces
+it exactly on all nine workloads (117/117); direct vs split is bit-identical at
+the fp16 logits over 16 tokens at 3 prompt lengths.
 
 ## In-flight state (2026-10-02 18:00 UTC)
 
