@@ -1,0 +1,56 @@
+{
+  "runtime": "vLLM",
+  "role": "Runtime C — out-of-tree EXL3 integration",
+  "label": "vLLM 0.30.0 + vllm-exl3",
+  "version": "0.30.0",
+  "commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+  "commit_verified": true,
+  "commit_verification": "git ls-remote vllm-project/vllm: refs/tags/v0.30.0 dereferences to ced6857afa0ea7b2e3f0846a62e1394e90f15607; the 7-character pin 'ced6857' matches",
+  "plugin": "vcruz305/vllm-exl3",
+  "plugin_commit": "223e246ff8da552d2ace976c4bcbed804a8ec04c",
+  "plugin_commit_verified": true,
+  "quantization_label": "vLLM 0.30.0 + vllm-exl3 (never reported as native vLLM EXL3)",
+  "status": "INSTALL_FAILURE",
+  "benchmark_status": "not runnable on this VM",
+  "failure_class": "driver / CUDA-major incompatibility in the supplied environment (NOT a model or EXL3 support finding)",
+  "blocker": {
+    "summary": "vllm==0.30.0 hard-pins torch==2.13.0, which exists only as a CUDA 13.0 build; this VM's driver (550.144.03) supports CUDA 12.4 maximum.",
+    "resolved_dependencies_of_the_pin": {
+      "torch": "2.13.0",
+      "torchaudio": "2.11.0",
+      "torchvision": "0.28.0",
+      "nvidia-cudnn-cu13": "9.20.0.48",
+      "nvidia-nvshmem-cu13": "3.4.5",
+      "nvidia-cuda-crt": "13.4.92",
+      "flashinfer-python": "0.6.18.post1",
+      "nvidia-cutlass-dsl": "4.7.1 (cu13)",
+      "packages_total": 192
+    },
+    "wheel": "vllm-0.30.0-cp38-abi3-manylinux_2_28_x86_64.whl (compiled against the CUDA 13 stack)",
+    "runtime_probe": {
+      "cudaRuntimeGetVersion": "13.0",
+      "cudaDriverGetVersion": "12.4",
+      "cudaSetDevice_0": "rc=35",
+      "cudaGetErrorString": "CUDA driver version is insufficient for CUDA runtime version"
+    }
+  },
+  "notes_for_the_future_re_run": {
+    "architecture_is_not_the_expected_blocker": "The checkpoint declares architectures: [\"LlamaForCausalLM\"] / model_type: llama, which vLLM supports natively. The gate to test is therefore whether vllm-exl3 loads this checkpoint's packed EXL3 tensor group and executes an Ampere-correct (sm_86) kernel path.",
+    "no_blackwell_paths": "The campaign explicitly forbids activating sm_100/sm_120/Blackwell-only kernels on this Ampere GPU. Since the stack could not be installed, no kernel path was exercised at all.",
+    "gate_to_verify_when_runnable": [
+      "vLLM recognizes the architecture",
+      "plugin registration of --quantization exl3 succeeds",
+      "EXL3 quantization config loads",
+      "packed tensors load with no missing keys",
+      "no unexpected random initialization",
+      "embeddings and lm_head work",
+      "GPU EXL3 kernels actually execute on sm_86"
+    ]
+  },
+  "not_attempted_by_design": [
+    "patching vLLM to add a MiniCPM architecture",
+    "modifying vllm-exl3",
+    "substituting stock vLLM and labelling it EXL3",
+    "substituting another model or quantization format"
+  ]
+}

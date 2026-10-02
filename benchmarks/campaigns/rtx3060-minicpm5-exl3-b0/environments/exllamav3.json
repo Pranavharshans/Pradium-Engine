@@ -1,0 +1,81 @@
+{
+  "runtime": "ExLlamaV3",
+  "role": "Runtime A — native/reference EXL3 execution path",
+  "version": "1.5.3",
+  "commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
+  "commit_verified": true,
+  "commit_verification": "git clone turboderp-org/exllamav3 && git checkout d3739fd && git rev-parse HEAD; also refs/tags/v1.5.3 dereferences to the same commit",
+  "plugin": null,
+  "plugin_commit": null,
+  "install_method": "upstream prebuilt wheel exllamav3-1.5.3+cu128.torch2.10.0-cp312-cp312-linux_x86_64.whl from the GitHub release page for tag v1.5.3 (chosen because it exactly matches the VM's Python 3.12 / CUDA 12.8 stack; the pinned tag and the installed artifact are the same revision)",
+  "environment": {
+    "python": "3.12.3",
+    "python_env_path": "/workspace/envs/exllamav3",
+    "torch": "2.10.0+cu128",
+    "torch_cuda": "12.8",
+    "cudnn": "91002",
+    "exllamav3": "1.5.3+cu128.torch2.10.0",
+    "transformers": "5.18.0",
+    "tokenizers": "0.23.2",
+    "numpy": "2.5.3",
+    "safetensors": "0.8.0",
+    "triton": "3.6.0",
+    "llguidance": "1.9.1",
+    "marisa_trie": "1.4.1",
+    "pydantic": "2.13.5",
+    "ninja": "1.13.2",
+    "flashinfer": null
+  },
+  "cuda_toolkit_on_host": "12.8.93 (nvcc V12.8.93)",
+  "nvidia_driver": "550.144.03 (supports CUDA 12.4 maximum runtime)",
+  "gpu": "NVIDIA GeForce RTX 3060",
+  "compute_capability": "8.6",
+  "vram_mb": 12288,
+  "model": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+  "model_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+  "model_dir": "/workspace/models/minicpm5-2b-exl3",
+  "benchmark_version": "PRADIUM-RUNTIME-BENCH-v2",
+  "pradium_commit": "cf4e8754e6edcf588ebf0a207472e19c24f233d3",
+  "launch_command": "/workspace/run_suite.sh exllamav3 <suite> [benchmark args]",
+  "effective_cli_command": "python -m benchmarks run <suite> --runtime exllamav3 --tokenizer hf:ewin-reg/MiniCPM5-2B-EXL3-Quantized@e36fbb568f466739d7c244a5100d01acf93d3b7f --model ewin-reg/MiniCPM5-2B-EXL3-Quantized --model-revision e36fbb568f466739d7c244a5100d01acf93d3b7f --quantization EXL3 --bpw 4.0 --runtime-config '<json>'",
+  "environment_variables": {
+    "PYTHONPATH": "/workspace/pradium",
+    "HF_HOME": "/workspace/.hf_home",
+    "TORCH_CUDA_ARCH_LIST": "8.6",
+    "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+    "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True"
+  },
+  "runtime_flags": {
+    "model_dir": "/workspace/models/minicpm5-2b-exl3",
+    "max_num_tokens": 32768,
+    "max_batch_size": 16,
+    "max_chunk_size": 2048,
+    "cpu_cache_size": 0,
+    "device": "cuda:0",
+    "cache_k_bits": null,
+    "cache_v_bits": null,
+    "greedy_sampler": "ArgmaxSampler (explicit; Job default is stochastic MinP0.08/temp0.8)",
+    "require_exl3": true
+  },
+  "normal_optimizations": {
+    "cuda_graphs": "disabled — v1.5.3 has no CUDA-graph capture path",
+    "continuous_batching": "enabled (Generator default engine behaviour)",
+    "prefix_cache": "enabled (automatic content-hashed page table, 256-token pages)",
+    "chunked_prefill": "enabled (max_chunk_size = 2048, ExLlamaV3 default)",
+    "kv_cache_dtype": "fp16 (cache_k_bits/cache_v_bits unset — v1.5.3 default)",
+    "speculative_decoding": "disabled (no draft model available for this checkpoint)"
+  },
+  "verification": {
+    "smoke_test": "benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/verification/exllamav3_smoke.json",
+    "determinism_and_telemetry": "benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/verification/exllamav3_verify.json",
+    "adapter_conformance": "15/15 passed, 0 skipped (benchmarks/tests/test_adapter_exllamav3.py)",
+    "exl3_authenticity": {
+      "linear_modules": 295,
+      "quant_type_counts": {"exl3": 295},
+      "non_exl3_linears": [],
+      "bpw_layer": 4.01267835828993,
+      "bpw_head": 6.007935168696385,
+      "verdict": "genuine EXL3 execution; no silent dequantization"
+    }
+  }
+}

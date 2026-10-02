@@ -1,0 +1,63 @@
+{
+ "model_dir": "/workspace/models/minicpm5-2b-exl3",
+ "model_repo": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+ "model_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+ "base_model": "openbmb/MiniCPM5-2B",
+ "generated_utc": "2026-10-02T07:37:02.267588+00:00",
+ "files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": "11ad7efa24975ee4b0c3c3a38ed18737f0658a5f75a0a96787b576a78a023361"
+  },
+  "README.md": {
+   "size": 11717,
+   "sha256": "08781fdbe4ad2d1b47c155ca79f17e55621eebebd3e3437b81ce6a8772974837"
+  },
+  "chat_template.jinja": {
+   "size": 9060,
+   "sha256": "cc945752db555d60949b16989df4ccfeb52a313d6b4b5c5229dd786e2e9fcf1c"
+  },
+  "config.json": {
+   "size": 1011,
+   "sha256": "dfc339b30dd6055b815a7e546b415345074e51eb7485b0571ac933203e1ea536"
+  },
+  "generation_config.json": {
+   "size": 213,
+   "sha256": "9ac4f32e5f32358697a9f438a3ea89ef80e6ba786c72c49e932f9f21c122fdb1"
+  },
+  "model.safetensors": {
+   "size": 1730109447,
+   "sha256": "4a310a644144c54f8146c3dbf58fcedc5ab97e8198d21e241c09fcfad5b6b2be"
+  },
+  "quantization_config.json": {
+   "size": 378746,
+   "sha256": "b176f78672cf686c9bda9fac0f973fab648364aba96349f5bcb0f9880bca0dc9"
+  },
+  "special_tokens_map.json": {
+   "size": 551,
+   "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+  },
+  "tokenizer.json": {
+   "size": 9894271,
+   "sha256": "3e065a558a034185fe299917b398685c1facd0169a9eea1e629eb30c171fed81"
+  },
+  "tokenizer_config.json": {
+   "size": 94391,
+   "sha256": "e9b1064649e771d7a8e15637c68b2d2749724877ba3648bd74a4ece31c26303b"
+  }
+ },
+ "checkpoint_size_bytes": 1740500926,
+ "checkpoint_size_gib": 1.621,
+ "safetensors": {
+  "file": "model.safetensors",
+  "header_bytes": 137059,
+  "header_sha256": "55e9ea37a9d43c61bf673ccf144d7cc907d3369936cc34902b22897c61eac9e6",
+  "n_tensors": 1266,
+  "declared_data_bytes": 1729972380,
+  "data_section_sha256": "ce4150b52c24e17ad10b3afb3d37f45b2cfcb8b9cd87fac25eada879d1c97256",
+  "tensor_manifest_sha256": "57b2969f1f0a867bb85bd96a927ac801b8361577da52d5ad1cef9af444da2a6b",
+  "metadata": null
+ },
+ "has_model_safetensors_index": false,
+ "shard_count": 1
+}
