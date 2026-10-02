@@ -16,6 +16,10 @@ TREE=${TREE:-/workspace/exp/builds/cand-series-0001-0002}
 R=${REPO:-/workspace/exp/pradium}
 LOG=${LOG:-/workspace/exp/full_campaign.log}
 TOOLS=$R/experiments/tools
+# Matrix-only rounds: the nine core workloads are the decision metric. The
+# decode-step profiles for the same revisions run separately (EXP-0000 tooling)
+# so a round stays ~15 minutes.
+export SKIP_PROFILES=${SKIP_PROFILES:-1}
 
 {
   echo "=== full campaign start ==="; date -u
