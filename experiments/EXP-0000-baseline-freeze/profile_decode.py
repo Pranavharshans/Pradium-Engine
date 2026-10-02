@@ -238,7 +238,8 @@ def run(args) -> dict:
 
         while steps < safety and not done:
             if (
-                profiler is None
+                args.profile_steps > 0
+                and profiler is None
                 and not profiled_done
                 and len(token_ts_ns) >= args.profile_after_tokens
             ):
