@@ -391,6 +391,7 @@ def materialize_prefix_group(
         else ()
     )
     requests: list[MaterializedPrompt] = []
+    suffix_first_ids: set[int] = set()
     for i in range(request_count):
         if suffix_n > 0:
             marker_offset = i * REQUEST_MARKERS_PER_STREAM
@@ -405,6 +406,15 @@ def materialize_prefix_group(
             )
         else:
             suffix_ids = []
+        # Diverge immediately after the declared shared prefix, including 0%.
+        # Marker tokenization can otherwise introduce an accidental common prefix.
+        if suffix_ids:
+            distinct = next((j for j, token in enumerate(suffix_ids)
+                             if token not in suffix_first_ids), None)
+            if distinct is None:
+                raise CorpusValidationError("cannot construct distinct suffix starts")
+            suffix_ids[0], suffix_ids[distinct] = suffix_ids[distinct], suffix_ids[0]
+            suffix_first_ids.add(suffix_ids[0])
         ids = list(shared_ids) + suffix_ids
         if len(ids) != total_input_tokens:
             raise CorpusValidationError(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 #: Frozen benchmark identifier. Stored in every result file.
-BENCHMARK_VERSION = "PRADIUM-RUNTIME-BENCH-v1"
+BENCHMARK_VERSION = "PRADIUM-RUNTIME-BENCH-v2"
 
 #: Frozen benchmark components. Any change to one of these requires a version
 #: bump of :data:`BENCHMARK_VERSION` (and of the ``VERSION`` file).

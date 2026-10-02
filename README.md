@@ -4,7 +4,7 @@ Repository for the Pradium inference engine and its tooling.
 
 ## Pradium Runtime Benchmark
 
-`benchmarks/` contains **PRADIUM-RUNTIME-BENCH-v1**, a framework-neutral
+`benchmarks/` contains **PRADIUM-RUNTIME-BENCH-v2**, a framework-neutral
 inference-runtime benchmark suite. It measures any runtime (ExLlamaV3, SGLang,
 TensorFold, vLLM, Pradium, future runtimes) through a generic adapter API and
 owns its workloads, prompts, token accounting, telemetry, statistics and

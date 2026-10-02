@@ -104,6 +104,7 @@ class PromptProvider:
         return BenchmarkRequest(
             request_id=request_id or new_request_id(),
             input_ids=list(prompt.input_ids),
+            prompt_text=prompt.prompt_text,
             prompt_token_count=prompt.prompt_tokens,
             max_new_tokens=output_tokens,
             profile=profile,

@@ -10,6 +10,7 @@ appear only as record metadata.
 
 from __future__ import annotations
 
+import queue
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -75,6 +76,7 @@ class RunnerContext:
     bpw: float | None = None
     timeout_s: float | None = None
     vram_loaded_mb: float | None = None
+    runtime_timed_out: threading.Event = field(default_factory=threading.Event)
 
     def record_defaults(self) -> dict[str, Any]:
         """Common raw-record fields for this context."""
@@ -104,6 +106,72 @@ class RunnerContext:
         }
 
 
+def isolate_prefix_cache(ctx: RunnerContext) -> None:
+    """Clear automatic prefix reuse outside timed ordinary workload groups."""
+    if ctx.runtime_timed_out.is_set():
+        return
+    caps = ctx.adapter.get_capabilities()
+    if caps.is_usable("supports_prefix_cache"):
+        if caps.is_usable("supports_cache_reset"):
+            ctx.adapter.reset_cache()
+        else:
+            ctx.performance_valid = False
+
+
+def _measurement_wall_ns(results: list[RawResult]) -> int:
+    starts = [r.request_submitted_ns for r in results if r.request_submitted_ns is not None]
+    ends = [r.last_token_ns for r in results if r.last_token_ns is not None]
+    return max(ends) - min(starts) if starts and ends else 0
+
+
+def _stream_events(ctx: RunnerContext, request: BenchmarkRequest, submit_ns: int):
+    """Timestamp arrivals in the producer; a deadline also covers blocked next().
+
+    Python cannot kill adapter threads. On timeout the context is quarantined:
+    no further generation is started through this context.
+    """
+    if ctx.timeout_s is None:
+        for token in ctx.adapter.generate_stream(request):
+            yield token, now_ns()
+        return
+    messages = queue.Queue()
+    stopped = threading.Event()
+    def produce():
+        try:
+            for token in ctx.adapter.generate_stream(request):
+                if stopped.is_set():
+                    break
+                messages.put((token, now_ns(), None))
+                if token.done:
+                    break
+        except Exception as exc:
+            messages.put((None, now_ns(), exc))
+        finally:
+            messages.put((None, now_ns(), None))
+    threading.Thread(target=produce, daemon=True, name=f"stream-{request.request_id}").start()
+    deadline = submit_ns + ctx.timeout_s * 1e9
+    try:
+        while True:
+            remaining = (deadline - now_ns()) / 1e9
+            if remaining <= 0:
+                raise RuntimeTimeoutError(f"request exceeded timeout of {ctx.timeout_s}s")
+            try:
+                token, timestamp, error = messages.get(timeout=remaining)
+            except queue.Empty:
+                raise RuntimeTimeoutError(f"request exceeded timeout of {ctx.timeout_s}s")
+            if timestamp > deadline:
+                raise RuntimeTimeoutError(f"request exceeded timeout of {ctx.timeout_s}s")
+            if error is not None:
+                raise error
+            if token is None:
+                return
+            yield token, timestamp
+            if token.done:
+                return
+    finally:
+        stopped.set()
+
+
 def _window_value(stats: WindowStats, metric: str, stat: str) -> float | None:
     return stats.get(metric, stat)
 
@@ -111,7 +179,7 @@ def _window_value(stats: WindowStats, metric: str, stat: str) -> float | None:
 def execute_request(
     ctx: RunnerContext,
     request: BenchmarkRequest,
-    gate: threading.Event | None = None,
+    gate: threading.Event | threading.Barrier | None = None,
     concurrency: int = 1,
     batch_size: int = 1,
     persist_raw: bool = True,
@@ -126,6 +194,8 @@ def execute_request(
     aggregates can be attached first (traces and failures are always persisted
     immediately).
     """
+    vram_before = ctx.telemetry.vram_used_mb()
+    ram_before = ctx.telemetry.snapshot().get("memory", {}).get("process_rss_mb")
     if gate is not None:
         gate.wait()
     submit_ns = now_ns()
@@ -133,26 +203,24 @@ def execute_request(
     final: StreamToken | None = None
     error: str | None = None
     status = EXEC_SUCCESS
-    vram_before = ctx.telemetry.vram_used_mb()
-    ram_before = ctx.telemetry.snapshot().get("memory", {}).get("process_rss_mb")
 
     try:
-        for token in ctx.adapter.generate_stream(request):
+        if ctx.runtime_timed_out.is_set():
+            raise RuntimeTimeoutError("runtime quarantined after request timeout")
+        for token, timestamp_ns in _stream_events(ctx, request, submit_ns):
             if token.done:
                 final = token
                 break
-            events.append(TokenEvent(token.index, token.token_id or 0, now_ns()))
-            if (
-                ctx.timeout_s is not None
-                and (now_ns() - submit_ns) > ctx.timeout_s * 1e9
-            ):
-                raise RuntimeTimeoutError(
-                    f"request exceeded timeout of {ctx.timeout_s}s"
-                )
+            if token.index != len(events) or token.token_id is None:
+                raise ValueError("invalid stream token index or missing token ID")
+            events.append(TokenEvent(token.index, token.token_id, timestamp_ns))
+        if final is None:
+            raise ValueError("stream ended without final done event")
     except RuntimeOutOfMemoryError as exc:
         status, error = EXEC_OOM, str(exc)
     except RuntimeTimeoutError as exc:
         status, error = EXEC_TIMEOUT, str(exc)
+        ctx.runtime_timed_out.set()
     except CapabilityNotSupported as exc:
         status, error = EXEC_UNSUPPORTED, str(exc)
     except Exception as exc:  # noqa: BLE001 - failures are recorded, not fatal
@@ -172,6 +240,9 @@ def execute_request(
     elif actual_tokens == 0:
         correctness = CORRECT_FAIL
         error = (error + "; " if error else "") + "empty output"
+    elif actual_tokens > request.max_new_tokens:
+        correctness = CORRECT_FAIL
+        error = "output exceeds requested token count"
     elif early_termination:
         correctness = CORRECT_WARNING
         reason = (
@@ -217,6 +288,9 @@ def execute_request(
 
     # --- fairness notes ---
     fairness_notes: list[str] = []
+    caps = ctx.adapter.get_capabilities()
+    if caps.is_usable("supports_prefix_cache") and not caps.is_usable("supports_cache_reset"):
+        fairness_notes.append("prefix cache isolation unavailable; performance invalid")
     if not ctx.adapter.get_capabilities().is_usable("supports_input_ids"):
         fairness_notes.append("runtime retokenized prompt text (no input_ids support)")
     if (
@@ -226,6 +300,8 @@ def execute_request(
         fairness_notes.append("runtime cannot guarantee fixed decode length")
 
     defaults = ctx.record_defaults()
+    if status != EXEC_SUCCESS or correctness != CORRECT_PASS:
+        defaults["performance_valid"] = False
     record = RawResult(
         timestamp=datetime.now(timezone.utc).isoformat(),
         profile=request.profile,
@@ -359,6 +435,7 @@ def run_group(
     recorded per request. Aggregate throughput is computed from the group's
     global wall-clock interval, never from summed per-request rates.
     """
+    isolate_prefix_cache(ctx)
     concurrency = concurrency or len(requests)
     results: list[RawResult] = []
     if len(requests) == 1:
@@ -374,8 +451,7 @@ def run_group(
         _persist_group(ctx, results)
         return results, aggregates
 
-    gate = threading.Event()
-    window_start_holder: list[int] = []
+    gate = threading.Barrier(len(requests) + 1)
     results_lock = threading.Lock()
 
     def worker(request: BenchmarkRequest) -> None:
@@ -396,11 +472,10 @@ def run_group(
     ]
     for thread in threads:
         thread.start()
-    window_start_holder.append(now_ns())
-    gate.set()
+    gate.wait()
     for thread in threads:
         thread.join()
-    wall_ns = now_ns() - window_start_holder[0]
+    wall_ns = _measurement_wall_ns(results)
 
     aggregates = _group_aggregates(ctx, results, wall_ns)
     _fill_aggregates(results, aggregates)

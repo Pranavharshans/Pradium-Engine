@@ -348,7 +348,7 @@ def build_summary(
                 )
 
     return {
-        "benchmark_version": BENCHMARK_VERSION,
+        "benchmark_version": sample.get("benchmark_version", BENCHMARK_VERSION),
         "session_id": sample.get("session_id", session_dir.name),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "runtime": sample.get("runtime"),
@@ -360,7 +360,7 @@ def build_summary(
         "tokenizer_revision": sample.get("tokenizer_revision"),
         "benchmark_mode": sample.get("benchmark_mode"),
         "run_policy": sample.get("run_policy"),
-        "performance_valid": sample.get("performance_valid", False),
+        "performance_valid": bool(records) and all(r.get("performance_valid", False) for r in records if not r.get("warmup", False)),
         "environment": environment or {},
         "config": config or {},
         "capabilities": capabilities or {},

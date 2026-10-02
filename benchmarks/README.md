@@ -1,4 +1,4 @@
-# Pradium Runtime Benchmark — `PRADIUM-RUNTIME-BENCH-v1`
+# Pradium Runtime Benchmark — `PRADIUM-RUNTIME-BENCH-v2`
 
 A **framework-neutral inference-runtime benchmark**. The benchmark owns its
 workloads, prompts, token accounting, telemetry, statistics, result format and
@@ -435,7 +435,7 @@ differences must be recorded, never silently tuned.
 
 ## Versioning
 
-`PRADIUM-RUNTIME-BENCH-v1` is stored in every result file. The following are
+`PRADIUM-RUNTIME-BENCH-v2` is stored in every result file. The following are
 frozen; changing any requires a version bump (`VERSION`,
 `benchmarks/core/version.py`, schemas):
 
@@ -468,3 +468,29 @@ Run tests:
 ```bash
 python -m unittest discover -s benchmarks/tests -t .
 ```
+
+## v2 measurement corrections
+
+v2 results must not be directly compared with v1 results. Concurrent group
+throughput now uses earliest submission to latest output token, excluding
+telemetry processing and trace writes, matching the C1 boundary. Pre-request
+telemetry snapshots are outside submission timing.
+
+Ordinary matrix, context and concurrency groups clear prefix caches before
+execution when cache reset is supported. A cache-enabled adapter without reset
+support makes the context performance-invalid. Prefix cases clear caches and
+prime a different suffix, so the measured prompt shares only the intended
+prefix; the zero-reuse baseline also uses a distinct prime. Text-only adapters
+receive the materialized prompt text; retokenization remains a fairness deviation.
+
+A streaming deadline covers blocked token delivery, final events and stream
+exhaustion. Python cannot forcibly kill an adapter thread: on timeout, no more
+generation is started through that context. Adapters must ensure shutdown can
+clean up outstanding work; process isolation is needed for hard cancellation.
+Static batch calls currently rely on adapter-side deadlines. Missing batch
+outputs fail and preserve every requested row and failure record.
+
+Correctness PASS checks the output-length/stream contract, not semantic model
+accuracy. Truncated, empty or failed streaming results are performance-invalid;
+raw telemetry remains available. Semantic validation and real GPU adapters
+remain future work.

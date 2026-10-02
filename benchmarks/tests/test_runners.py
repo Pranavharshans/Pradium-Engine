@@ -30,7 +30,7 @@ CONFIG = load_config()
 
 def make_ctx(tmp: str, runtime: MockRuntime) -> RunnerContext:
     session = Session("20261002-000000_mock_validation_unit", tmp, "mock", "validation", "quick")
-    session.write_environment({"benchmark_version": "PRADIUM-RUNTIME-BENCH-v1"})
+    session.write_environment({"benchmark_version": "PRADIUM-RUNTIME-BENCH-v2"})
     telemetry = TelemetrySampler(interval_ms=5, enable_gpu=False)
     telemetry.start()
     runtime.initialize()
@@ -82,7 +82,7 @@ class TestCollection(unittest.TestCase):
         lines = (Path(ctx.session.raw_path)).read_text().strip().splitlines()
         self.assertEqual(len(lines), 1)
         payload = json.loads(lines[0])
-        self.assertEqual(payload["benchmark_version"], "PRADIUM-RUNTIME-BENCH-v1")
+        self.assertEqual(payload["benchmark_version"], "PRADIUM-RUNTIME-BENCH-v2")
         self.assertEqual(payload["execution_status"], "SUCCESS")
 
         trace_files = list((Path(ctx.session.directory) / "traces").glob("*.json"))

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pradium.dev/schemas/pradium-runtime-bench-v1-raw-result.schema.json",
-  "title": "PRADIUM-RUNTIME-BENCH-v1 raw result record",
+  "title": "PRADIUM-RUNTIME-BENCH-v2 raw result record",
   "description": "One record per measured (or warmup) request, stored in raw.jsonl. Unknown fields are permitted; missing required fields are a schema violation.",
   "type": "object",
   "required": [
@@ -24,7 +24,7 @@
     "metric_provenance"
   ],
   "properties": {
-    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1"]},
+    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1", "PRADIUM-RUNTIME-BENCH-v2"]},
     "session_id": {"type": "string"},
     "timestamp": {"type": "string"},
     "suite": {"type": "string"},

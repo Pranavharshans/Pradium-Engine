@@ -95,10 +95,22 @@ def _run_case(
     records: list[RawResult] = []
     reused_tokens: list[int] = []
 
+    caps = ctx.adapter.get_capabilities()
+    if not caps.is_usable("supports_cache_reset"):
+        ctx.performance_valid = False
+    else:
+        ctx.adapter.clear_prefix_cache()
+
     for index, prompt in enumerate(group.requests):
+        if caps.is_usable("supports_cache_reset"):
+            ctx.adapter.clear_prefix_cache()
+        # Prime a different suffix, preserving only the intended shared prefix.
+        prime_prompt = group.requests[(index + 1) % len(group.requests)]
+        if prime_prompt.input_ids == prompt.input_ids:
+            raise ValueError("prefix test requires distinct prime and measure prompts")
         # --- prime the shared prefix (recorded as warmup, excluded from stats) ---
         prime_request = provider.request(
-            prompt,
+            prime_prompt,
             output_tokens,
             run_index=run_index,
             warmup=True,

@@ -19,6 +19,7 @@ from ..core.results import (
     CORRECT_SKIPPED,
     EXEC_UNSUPPORTED,
     RawResult,
+    FailureRecord,
 )
 from ..core.timing import (
     PROVENANCE_DERIVED,
@@ -29,7 +30,7 @@ from ..core.timing import (
     prefill_metrics,
 )
 from ..core.workloads import BATCH_SIZES
-from .base import RunnerContext
+from .base import RunnerContext, isolate_prefix_cache
 from .prompts import PromptProvider
 
 
@@ -54,6 +55,20 @@ def run_batching(
                 _run_batch(ctx, provider, profile, batch_size, run_index, warmup)
             )
         for record in case_records:
+            if record.execution_status != "SUCCESS":
+                record.performance_valid = False
+                ctx.session.append_failure(FailureRecord(
+                    benchmark_version=record.benchmark_version,
+                    session_id=record.session_id, timestamp=record.timestamp,
+                    suite=ctx.suite, runtime=record.runtime, model=record.model,
+                    profile=record.profile, concurrency=1,
+                    input_tokens=record.prompt_tokens,
+                    requested_output_tokens=record.requested_output_tokens,
+                    status=record.execution_status, error=record.error or "unknown error",
+                    request_id=record.request_id, run_index=record.run_index,
+                ))
+            elif record.correctness_status != "PASS":
+                record.performance_valid = False
             ctx.session.append_raw(record)
         records.extend(case_records)
         successful = [
@@ -89,6 +104,7 @@ def _run_batch(
         )
         for slot in range(batch_size)
     ]
+    isolate_prefix_cache(ctx)
     defaults = ctx.record_defaults()
 
     # --- batch formation + dispatch ---
@@ -102,6 +118,8 @@ def _run_batch(
         batch = list(requests)
         formation_ms = (time.perf_counter() - formed_at) * 1000.0
         results = ctx.adapter.generate_batch(batch)
+        if len(results) != len(requests):
+            raise ValueError(f"batch returned {len(results)} results for {len(requests)} requests")
     except CapabilityNotSupported as exc:
         status, error = EXEC_UNSUPPORTED, str(exc)
         formation_ms = (time.perf_counter() - formed_at) * 1000.0

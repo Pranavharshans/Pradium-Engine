@@ -47,7 +47,7 @@ class TestCliEndToEnd(unittest.TestCase):
             self.assertTrue(raw_lines)
             for line in raw_lines:
                 record = json.loads(line)
-                self.assertEqual(record["benchmark_version"], "PRADIUM-RUNTIME-BENCH-v1")
+                self.assertEqual(record["benchmark_version"], "PRADIUM-RUNTIME-BENCH-v2")
                 self.assertEqual(record["runtime"], "mock")
                 self.assertEqual(record["benchmark_mode"], "validation")
                 self.assertFalse(record["performance_valid"])

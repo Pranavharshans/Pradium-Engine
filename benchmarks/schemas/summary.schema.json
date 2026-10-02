@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pradium.dev/schemas/pradium-runtime-bench-v1-summary.schema.json",
-  "title": "PRADIUM-RUNTIME-BENCH-v1 session summary",
+  "title": "PRADIUM-RUNTIME-BENCH-v2 session summary",
   "description": "Aggregated statistics derived from raw.jsonl. Regenerable at any time from raw data.",
   "type": "object",
   "required": [
@@ -14,7 +14,7 @@
     "failures"
   ],
   "properties": {
-    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1"]},
+    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1", "PRADIUM-RUNTIME-BENCH-v2"]},
     "session_id": {"type": "string"},
     "generated_at": {"type": "string"},
     "runtime": {"type": "string"},
