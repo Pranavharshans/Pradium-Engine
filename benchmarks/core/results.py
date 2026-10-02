@@ -108,6 +108,7 @@ class RawResult:
     profile: str | None = None
     input_class: str | None = None
     output_class: str | None = None
+    request_id: str | None = None
     run_index: int = 0
     warmup: bool = False
     benchmark_mode: str = "validation"
@@ -214,6 +215,9 @@ class RawResult:
     generated_text: str | None = None
     finish_reason: str = FINISH_UNKNOWN
     early_termination: bool = False
+
+    # Request metadata preserved (phase, role, scenario, slot, ...)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Internal runtime metrics (cache, queue, scheduler) where exposed
     cache_hit_rate: float | None = None

@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from ..adapters.base import (
+    CapabilityNotSupported,
     RuntimeAdapter,
     RuntimeOutOfMemoryError,
     RuntimeTimeoutError,
@@ -32,6 +33,7 @@ from ..core.results import (
     EXEC_OOM,
     EXEC_SUCCESS,
     EXEC_TIMEOUT,
+    EXEC_UNSUPPORTED,
     FailureRecord,
     RawResult,
     TokenTrace,
@@ -146,6 +148,8 @@ def execute_request(
         status, error = EXEC_OOM, str(exc)
     except RuntimeTimeoutError as exc:
         status, error = EXEC_TIMEOUT, str(exc)
+    except CapabilityNotSupported as exc:
+        status, error = EXEC_UNSUPPORTED, str(exc)
     except Exception as exc:  # noqa: BLE001 - failures are recorded, not fatal
         status, error = EXEC_FAILED, f"{type(exc).__name__}: {exc}"
 
@@ -222,6 +226,7 @@ def execute_request(
         profile=request.profile,
         input_class=request.input_class,
         output_class=request.output_class,
+        request_id=request.request_id,
         run_index=request.run_index,
         warmup=request.warmup,
         prompt_hash=request.metadata.get("prompt_hash"),
@@ -285,6 +290,7 @@ def execute_request(
         generated_text=None,
         finish_reason=(final.finish_reason if final else "error"),
         early_termination=early_termination,
+        metadata=dict(request.metadata),
         cache_hit_rate=cache_hit,
         cache_lookup_overhead_ms=internal.get("cache_lookup_overhead_ms"),
         cache_insertion_overhead_ms=internal.get("cache_insertion_overhead_ms"),
