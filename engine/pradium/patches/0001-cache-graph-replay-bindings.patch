@@ -1,0 +1,147 @@
+diff --git a/exllamav3/exllamav3_ext/graph.cuh b/exllamav3/exllamav3_ext/graph.cuh
+--- a/exllamav3/exllamav3_ext/graph.cuh
++++ b/exllamav3/exllamav3_ext/graph.cuh
+@@ -2,6 +2,7 @@
+ 
+ #include <ATen/Tensor.h>
+ #include <vector>
++#include "graph_replay_plan.h"
+ #include <pybind11/pybind11.h>
+ namespace py = pybind11;
+ #include <cuda_runtime.h>
+@@ -120,6 +121,8 @@
+     std::vector<void*> current_values;
+     std::vector<bool> node_needs_update;
+ 
++    GraphReplayPlan replay_plan;
++
+     bool need_cublas;
+     bool ready;
+     bool ready_to_record;
+@@ -132,7 +135,7 @@
+     void capture_end();
+ 
+     void record_param(void* kernel, int param_id, int param_offset, int size = 8);
+-    void launch(std::vector<PPTR> params, cudaStream_t stream);
++    void launch(const std::vector<PPTR>& params, cudaStream_t stream);
+ 
+     void inspect_graph();
+ };
+diff --git a/exllamav3/exllamav3_ext/graph.cu b/exllamav3/exllamav3_ext/graph.cu
+--- a/exllamav3/exllamav3_ext/graph.cu
++++ b/exllamav3/exllamav3_ext/graph.cu
+@@ -126,7 +126,7 @@
+     graph_sites.push_back(std::tuple<void*, int, int, int>(kernel, param_id, param_offset, size));
+ }
+ 
+-void Graph::launch(std::vector<PPTR> params, cudaStream_t stream)
++void Graph::launch(const std::vector<PPTR>& params, cudaStream_t stream)
+ {
+     if (need_cublas)
+     {
+@@ -139,35 +139,31 @@
+         cublasSetWorkspace(cublas_handle, ws, WORKSPACE_SIZE);
+     }
+ 
+-    int p = 0;
+-    int n = 0;
+-    while (true)
+-    {
+-        if (std::get<1>(graph_node_sites[n]) == std::get<0>(params[p]))
+-        {
+-            if (std::get<0>(params[p]) != GP_end)
+-            {
+-                void* new_value  = std::get<1>(params[p]);
+-                int node_idx     = std::get<0>(graph_node_sites[n]);
+-                int param_offset = std::get<2>(graph_node_sites[n]);
+-                int param_size   = std::get<3>(graph_node_sites[n]);
+-
+-                void** kernel_params = node_is_driver[node_idx] ?
+-                    node_params_drv[node_idx].kernelParams :
+-                    node_params[node_idx].kernelParams;
+-                void* p_old_value = kernel_params[param_offset];
+-                if (memcmp(p_old_value, &new_value, param_size))
+-                {
+-                    memcpy(p_old_value, &new_value, param_size);
+-                    node_needs_update[node_idx] = true;
+-                }
+-            }
+-            p++;
+-        }
+-
+-        n++;
+-        if (p == params.size()) break;
+-        if (n == graph_node_sites.size()) TORCH_CHECK(false, "Graph update failed");
++    // Resolve the ordered sites on the first replay (or layout change), then
++    // index directly. Keep byte-sized comparisons for packed scalar arguments.
++    const auto& bindings = replay_plan.bind(
++        graph_node_sites.size(),
++        [&](size_t i) { return std::get<1>(graph_node_sites[i]); },
++        params.size(),
++        [&](size_t i) { return std::get<0>(params[i]); });
++    for (size_t p = 0; p < params.size(); ++p)
++    {
++        if (std::get<0>(params[p]) == GP_end) continue;
++        const auto& site = graph_node_sites[bindings[p]];
++        void* new_value = std::get<1>(params[p]);
++        int node_idx = std::get<0>(site);
++        int param_offset = std::get<2>(site);
++        int param_size = std::get<3>(site);
++        TORCH_CHECK(param_size > 0 && param_size <= sizeof(new_value),
++                    "Graph replay parameter has unsupported size");
++        void** kernel_params = node_is_driver[node_idx] ?
++            node_params_drv[node_idx].kernelParams : node_params[node_idx].kernelParams;
++        void* old_value = kernel_params[param_offset];
++        if (memcmp(old_value, &new_value, param_size))
++        {
++            memcpy(old_value, &new_value, param_size);
++            node_needs_update[node_idx] = true;
++        }
+     }
+ 
+     for (int n = 0; n < nodes.size(); ++n)
+diff --git a/exllamav3/exllamav3_ext/graph_replay_plan.h b/exllamav3/exllamav3_ext/graph_replay_plan.h
+new file mode 100644
+--- /dev/null
++++ b/exllamav3/exllamav3_ext/graph_replay_plan.h
+@@ -0,0 +1,40 @@
++#pragma once
++#include <cstddef>
++#include <stdexcept>
++#include <vector>
++
++// Bind an ordered replay argument list once. Repeated IDs are separate sites;
++// never deduplicate them (two GEMMs can patch the same named argument).
++class GraphReplayPlan
++{
++    std::vector<int> layout;
++    std::vector<std::size_t> bindings;
++public:
++    template <typename SiteId, typename ParamId>
++    const std::vector<std::size_t>& bind(std::size_t sites, SiteId site_id,
++                                        std::size_t count, ParamId param_id)
++    {
++        bool same = layout.size() == count;
++        for (std::size_t i = 0; same && i < count; ++i)
++            same = layout[i] == param_id(i);
++        if (same) return bindings;
++
++        std::vector<int> next_layout;
++        std::vector<std::size_t> next_bindings;
++        next_layout.reserve(count);
++        next_bindings.reserve(count);
++        std::size_t cursor = 0;
++        for (std::size_t i = 0; i < count; ++i)
++        {
++            const int id = param_id(i);
++            while (cursor < sites && site_id(cursor) != id) ++cursor;
++            if (cursor == sites)
++                throw std::invalid_argument("Graph replay parameter layout does not match capture");
++            next_layout.push_back(id);
++            next_bindings.push_back(cursor++);
++        }
++        layout.swap(next_layout);
++        bindings.swap(next_bindings);
++        return bindings;
++    }
++};
