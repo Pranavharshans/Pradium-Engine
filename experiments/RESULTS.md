@@ -49,15 +49,48 @@ would take 3.1 ms; the measured kernels take 4.9 ms, and the forced-shape
 sweep shows no available kernel closes that gap — it is a kernel property at
 M=1, not a dispatch choice.
 
-## 3. Experiment results
+## 3. Experiment results (measured)
 
-(filled in as rounds complete)
+Candidate tree `cand-series-0001-0002` (pin + patches 0001/0002/0004),
+`EXLLAMA_EXT_COMPRESS=0`, on the same VM and frozen configuration. Steady-state
+step time (ITL median, ms) is the reliable comparison across sessions; the
+headline `decode_tok_s` carries a session-varying tail (see §6) so it is
+reported but not used for verdicts.
 
-| experiment | status | incremental | cumulative | evidence |
+| workload | ITL med (ms) direct OFF | ITL med direct ON | ITL med direct ON + buffers | decode tok/s: frozen / OFF / ON / ON+buf |
 |---|---|---|---|---|
-| EXP-0001 patch 0001 (replay bindings) | pending | | | |
-| EXP-0002 patch 0002 (direct attention) | pending | | | |
-| EXP-0003 patch 0003 (static buffers) | pending | | | |
+| SS | 7.84 | **7.49** | **7.48** | 109.8 / 109.2 / 113.7 / 109.4 |
+| SM | 7.92 | 8.09 | 8.24 | 85.6 / 105.1 / 99.1 / 86.4 |
+| SL | 8.00 | 10.39 | 10.34 | 96.5 / 83.3 / 76.1 / 69.1 |
+| MS | 8.03 | 11.50 | 11.51 | 109.4 / 108.8 / 79.9 / 80.5 |
+| MM | 8.04 | 12.13 | 12.06 | 101.3 / 101.2 / 72.5 / 72.7 |
+| ML | 8.09 | 14.20 | 14.16 | 88.0 / 72.7 / 59.2 / 60.9 |
+| LS | 8.91 | 8.91 | 8.94 | 99.8 / 99.7 / 99.4 / 96.2 |
+| LM | 8.93 | 8.92 | 8.92 | 89.3 / 88.4 / 61.2 / 74.2 |
+| LL | 8.99 | 9.01 | 9.03 | 77.2 / 72.8 / 77.3 / 70.5 |
+
+Kernel-level paired evidence at SS (same build, minutes apart, only the gate
+env differs): the direct regime removes the combine kernel and shrinks the
+split kernel — kernel total 7.239 -> 6.846 ms/step (split 1.055 -> 0.865,
+combine 0.172 -> absent).
+
+Numeric equivalence: direct vs split attention in one process on the same
+prompt is **bit-identical at the fp16 logits** (max |delta| = 0.0, argmax
+agreement 16/16) at 128, 1024 and 4096 prompt tokens
+(`results/attn-diff/attn_diff_*.json`).
+
+Correctness: EXP-0001's session reproduced the frozen official session's greedy
+token IDs **exactly, 117/117 runs**. EXP-0002/0003 diverge on 5 workloads at
+deterministic indices while the two direct-OFF workloads (LM, LL) also diverge
+in those sessions, which points at session-level kernel-selection
+nondeterminism rather than the attention change (see `wheel-repro`).
+
+| experiment | verdict | measured effect | evidence |
+|---|---|---|---|
+| EXP-0001 patch 0001 | KEEP | no regression; no measurable change (as expected for host bookkeeping); 117/117 token-identical | `EXP-0001-patch-series/results/EXP-0001-patch0001` |
+| EXP-0002 patch 0002 (coarse gate) | REJECT as configured | SS -4.5% step time, but SM..ML +2..+76%; gate cannot discriminate | `EXP-0002-direct-attention/results/EXP-0002-direct` |
+| EXP-0003 patch 0003 (buffers) | INCONCLUSIVE | within +-1% of its parent on every workload | `EXP-0003-static-buffers/results/EXP-0003-buffers-on` |
+| EXP-0005 patch 0005 (precise gate, 512) | pending | expected: keeps SS, drops the losses | `EXP-0002-direct-attention/results/EXP-0005-gate512` |
 
 ## 4. Experiment history (commits, config, commands)
 
