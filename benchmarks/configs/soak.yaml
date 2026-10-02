@@ -1,0 +1,5 @@
+# Soak / stability suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Not part of quick mode. Duration is configurable at run time (--duration).
+duration_minutes: 30
+profiles: [MM, SL, LL]
+poll_interval_ms: 1000

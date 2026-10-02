@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pradium.dev/schemas/pradium-runtime-bench-v1-summary.schema.json",
+  "title": "PRADIUM-RUNTIME-BENCH-v1 session summary",
+  "description": "Aggregated statistics derived from raw.jsonl. Regenerable at any time from raw data.",
+  "type": "object",
+  "required": [
+    "benchmark_version",
+    "session_id",
+    "runtime",
+    "benchmark_mode",
+    "performance_valid",
+    "groups",
+    "failures"
+  ],
+  "properties": {
+    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1"]},
+    "session_id": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "runtime": {"type": "string"},
+    "runtime_info": {"type": "object"},
+    "benchmark_mode": {"type": "string", "enum": ["quick", "validation", "official"]},
+    "run_policy": {"type": "string"},
+    "performance_valid": {"type": "boolean"},
+    "environment": {"type": "object"},
+    "config": {"type": "object"},
+    "capabilities": {"type": "object"},
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["suite", "profile", "concurrency", "measured_requests", "stats"],
+        "properties": {
+          "suite": {"type": "string"},
+          "profile": {"type": ["string", "null"]},
+          "concurrency": {"type": "integer", "minimum": 1},
+          "batch_size": {"type": "integer", "minimum": 1},
+          "context_input_tokens": {"type": ["integer", "null"]},
+          "reuse_ratio": {"type": ["number", "null"]},
+          "measured_requests": {"type": "integer", "minimum": 0},
+          "warmup_requests": {"type": "integer", "minimum": 0},
+          "stats": {"type": "object"},
+          "derived": {"type": "object"},
+          "execution_status_counts": {"type": "object"}
+        }
+      }
+    },
+    "failures": {"type": "array", "items": {"type": "object"}},
+    "unsupported_measurements": {"type": "array", "items": {"type": "string"}}
+  }
+}

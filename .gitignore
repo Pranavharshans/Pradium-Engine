@@ -1,0 +1,49 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Benchmark result sessions (generated; never commit) ---
+benchmarks/results/
+results/
+
+# --- Generated corpus materializations (deterministic; regenerate via CLI) ---
+benchmarks/corpus/materialized/
+
+# --- Model weights / ML caches ---
+*.safetensors
+*.gguf
+*.pt
+*.pth
+*.ckpt
+models/
+model_weights/
+hf_cache/
+.huggingface/
+HF_HOME/
+TRANSFORMERS_CACHE/
+
+# --- Profiling captures ---
+*.nsys-rep
+*.ncu-rep
+*.qdrep
+*.ncu-rep*
+profiling/
+nsight/
+
+# --- Logs and temporary files ---
+*.log
+tmp/
+tmp_*
+.DS_Store

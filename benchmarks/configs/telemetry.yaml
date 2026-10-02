@@ -1,0 +1,5 @@
+# Telemetry sampling (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# 100 ms captures useful behavior without materially affecting measurements.
+# Deep telemetry samples more frequently for short diagnostic runs.
+interval_ms: 100
+deep_interval_ms: 25

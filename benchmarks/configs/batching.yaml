@@ -1,0 +1,5 @@
+# Static-batching infrastructure (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Bn (static batch size) is NOT equivalent to Cn (concurrency); they are
+# benchmarked and reported separately.
+batch_sizes: [1, 2, 4, 8]
+profile: MM

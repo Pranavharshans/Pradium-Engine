@@ -1,0 +1,27 @@
+# Benchmark modes (frozen for PRADIUM-RUNTIME-BENCH-v1).
+#
+# quick      - development runs; results are never official
+# validation - infrastructure/mock runs; performance_valid = false
+# official   - full benchmark: 3 warmups, 10 measured runs
+#
+# Mock-runtime sessions are always recorded with benchmark_mode = validation
+# and performance_valid = false, whatever the run policy is.
+modes:
+  quick:
+    description: minimal development run
+    warmups: 1
+    measured_runs: 2
+    profiles: [SS, MM]
+    performance_valid: false
+  validation:
+    description: infrastructure validation run
+    warmups: 1
+    measured_runs: 2
+    profiles: [SS, MM, LL]
+    performance_valid: false
+  official:
+    description: full frozen benchmark
+    warmups: 3
+    measured_runs: 10
+    profiles: [SS, SM, SL, MS, MM, ML, LS, LM, LL]
+    performance_valid: true

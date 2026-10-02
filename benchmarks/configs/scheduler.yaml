@@ -1,0 +1,8 @@
+# Scheduler-interference suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# A/B/C decode while D arrives as a large prefill; interference is measured
+# from per-token timings around D's prefill window.
+background_requests: 3
+background_profile: ML
+intruder_profile: LS
+# Delay before the large prefill arrives (after background decoding starts).
+intruder_delay_ms: 250

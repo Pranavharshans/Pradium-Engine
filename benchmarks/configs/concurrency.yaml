@@ -1,0 +1,3 @@
+# Concurrency suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Cn means n simultaneous active requests, started behind a barrier.
+levels: [1, 2, 4, 8]

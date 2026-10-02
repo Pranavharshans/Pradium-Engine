@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pradium.dev/schemas/pradium-runtime-bench-v1-raw-result.schema.json",
+  "title": "PRADIUM-RUNTIME-BENCH-v1 raw result record",
+  "description": "One record per measured (or warmup) request, stored in raw.jsonl. Unknown fields are permitted; missing required fields are a schema violation.",
+  "type": "object",
+  "required": [
+    "benchmark_version",
+    "session_id",
+    "timestamp",
+    "suite",
+    "runtime",
+    "profile",
+    "run_index",
+    "warmup",
+    "benchmark_mode",
+    "performance_valid",
+    "prompt_tokens",
+    "requested_output_tokens",
+    "actual_output_tokens",
+    "concurrency",
+    "execution_status",
+    "correctness_status",
+    "metric_provenance"
+  ],
+  "properties": {
+    "benchmark_version": {"type": "string", "enum": ["PRADIUM-RUNTIME-BENCH-v1"]},
+    "session_id": {"type": "string"},
+    "timestamp": {"type": "string"},
+    "suite": {"type": "string"},
+
+    "runtime": {"type": "string"},
+    "runtime_version": {"type": ["string", "null"]},
+    "runtime_commit": {"type": ["string", "null"]},
+    "runtime_config": {"type": "object"},
+
+    "model": {"type": ["string", "null"]},
+    "model_revision": {"type": ["string", "null"]},
+    "tokenizer": {"type": ["string", "null"]},
+    "tokenizer_revision": {"type": ["string", "null"]},
+    "quantization": {"type": ["string", "null"]},
+    "bpw": {"type": ["number", "null"]},
+
+    "gpu": {"type": ["string", "null"]},
+    "gpu_uuid": {"type": ["string", "null"]},
+    "driver": {"type": ["string", "null"]},
+    "cuda": {"type": ["string", "null"]},
+
+    "profile": {"type": ["string", "null"]},
+    "input_class": {"type": ["string", "null"]},
+    "output_class": {"type": ["string", "null"]},
+    "run_index": {"type": "integer", "minimum": 0},
+    "warmup": {"type": "boolean"},
+    "benchmark_mode": {"type": "string", "enum": ["quick", "validation", "official"]},
+    "run_policy": {"type": "string"},
+    "performance_valid": {"type": "boolean"},
+
+    "prompt_hash": {"type": ["string", "null"]},
+    "input_ids_hash": {"type": ["string", "null"]},
+    "prompt_tokens": {"type": "integer", "minimum": 0},
+    "requested_output_tokens": {"type": "integer", "minimum": 0},
+    "actual_output_tokens": {"type": "integer", "minimum": 0},
+
+    "batch_size": {"type": "integer", "minimum": 1},
+    "concurrency": {"type": "integer", "minimum": 1},
+
+    "prefix_tokens": {"type": "integer", "minimum": 0},
+    "prefix_reused_tokens": {"type": ["integer", "null"]},
+    "prefix_recomputed_tokens": {"type": ["integer", "null"]},
+    "prefix_id": {"type": ["string", "null"]},
+    "expected_reuse_ratio": {"type": ["number", "null"]},
+
+    "request_submitted_ns": {"type": ["integer", "null"]},
+    "first_token_ns": {"type": ["integer", "null"]},
+    "last_token_ns": {"type": ["integer", "null"]},
+
+    "ttft_ms": {"type": ["number", "null"]},
+    "prefill_ms": {"type": ["number", "null"]},
+    "prefill_tok_s": {"type": ["number", "null"]},
+    "decode_ms": {"type": ["number", "null"]},
+    "decode_tok_s": {"type": ["number", "null"]},
+    "tpot_ms": {"type": ["number", "null"]},
+
+    "itl_mean_ms": {"type": ["number", "null"]},
+    "itl_median_ms": {"type": ["number", "null"]},
+    "itl_p95_ms": {"type": ["number", "null"]},
+    "itl_p99_ms": {"type": ["number", "null"]},
+    "itl_max_ms": {"type": ["number", "null"]},
+    "itl_min_ms": {"type": ["number", "null"]},
+    "itl_stdev_ms": {"type": ["number", "null"]},
+
+    "e2e_ms": {"type": ["number", "null"]},
+    "queue_ms": {"type": ["number", "null"]},
+    "scheduler_ms": {"type": ["number", "null"]},
+
+    "output_tok_s_per_request": {"type": ["number", "null"]},
+
+    "gpu_util_avg": {"type": ["number", "null"]},
+    "gpu_util_peak": {"type": ["number", "null"]},
+    "gpu_mem_util_avg": {"type": ["number", "null"]},
+    "gpu_mem_util_peak": {"type": ["number", "null"]},
+    "gpu_power_avg": {"type": ["number", "null"]},
+    "gpu_power_median": {"type": ["number", "null"]},
+    "gpu_power_peak": {"type": ["number", "null"]},
+    "gpu_temperature_avg": {"type": ["number", "null"]},
+    "gpu_temperature_peak": {"type": ["number", "null"]},
+    "gpu_clock_avg": {"type": ["number", "null"]},
+    "gpu_mem_clock_avg": {"type": ["number", "null"]},
+    "pcie_rx_avg": {"type": ["number", "null"]},
+    "pcie_tx_avg": {"type": ["number", "null"]},
+
+    "vram_before_mb": {"type": ["number", "null"]},
+    "vram_loaded_mb": {"type": ["number", "null"]},
+    "vram_peak_mb": {"type": ["number", "null"]},
+    "vram_after_mb": {"type": ["number", "null"]},
+    "vram_model_mb": {"type": ["number", "null"]},
+    "vram_kv_cache_mb": {"type": ["number", "null"]},
+    "vram_cuda_graph_mb": {"type": ["number", "null"]},
+    "vram_workspace_mb": {"type": ["number", "null"]},
+    "vram_runtime_overhead_mb": {"type": ["number", "null"]},
+    "kv_memory_mb": {"type": ["number", "null"]},
+
+    "ram_before_mb": {"type": ["number", "null"]},
+    "ram_peak_mb": {"type": ["number", "null"]},
+    "ram_after_mb": {"type": ["number", "null"]},
+
+    "cpu_avg": {"type": ["number", "null"]},
+    "cpu_peak": {"type": ["number", "null"]},
+    "system_cpu_avg": {"type": ["number", "null"]},
+    "process_cpu_time_s": {"type": ["number", "null"]},
+    "threads_peak": {"type": ["integer", "null"]},
+
+    "wall_clock_ms": {"type": ["number", "null"]},
+    "aggregate_output_tok_s": {"type": ["number", "null"]},
+    "aggregate_prompt_tok_s": {"type": ["number", "null"]},
+    "aggregate_total_tok_s": {"type": ["number", "null"]},
+    "aggregate_decode_tok_s": {"type": ["number", "null"]},
+    "requests_per_second": {"type": ["number", "null"]},
+    "completed_requests_per_minute": {"type": ["number", "null"]},
+
+    "generated_token_ids": {"type": "array", "items": {"type": "integer"}},
+    "generated_text": {"type": ["string", "null"]},
+    "finish_reason": {"type": "string"},
+    "early_termination": {"type": "boolean"},
+
+    "cache_hit_rate": {"type": ["number", "null"]},
+    "cache_lookup_overhead_ms": {"type": ["number", "null"]},
+    "cache_insertion_overhead_ms": {"type": ["number", "null"]},
+    "internal_metrics": {"type": "object"},
+
+    "metric_provenance": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["MEASURED_EXTERNAL", "REPORTED_RUNTIME", "DERIVED", "ESTIMATED", "UNAVAILABLE"]
+      }
+    },
+
+    "execution_status": {
+      "type": "string",
+      "enum": ["SUCCESS", "OOM", "FAILED", "TIMEOUT", "UNSUPPORTED"]
+    },
+    "correctness_status": {
+      "type": "string",
+      "enum": ["PASS", "WARNING", "FAIL", "SKIPPED"]
+    },
+    "error": {"type": ["string", "null"]},
+    "fairness_notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

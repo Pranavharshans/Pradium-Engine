@@ -1,0 +1,14 @@
+# Core 3x3 input x output matrix (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Changing any value here requires a benchmark version bump; loading this
+# config fails validation otherwise.
+matrix:
+  inputs:
+    short: 128
+    medium: 1024
+    long: 4096
+  outputs:
+    short: 64
+    medium: 256
+    long: 1024
+  # Canonical profile order, row-major through the matrix.
+  profiles: [SS, SM, SL, MS, MM, ML, LS, LM, LL]

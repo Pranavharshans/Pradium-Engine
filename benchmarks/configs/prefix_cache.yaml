@@ -1,0 +1,9 @@
+# Prefix / KV-reuse suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Ratios are defined on token IDs: shared_prefix_tokens / total_input_tokens.
+ratios: [0.0, 0.25, 0.5, 0.75, 0.9, 1.0]
+total_input_tokens: 1024
+requests_per_ratio: 4
+# For ~100% reuse: large identical prefix + small unique suffix per request.
+unique_suffix_tokens_at_full_reuse: 16
+# Cache scopes exercised; capability declarations decide what can actually run.
+scenarios: [same_session, cross_request, cross_session]

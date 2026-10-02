@@ -1,0 +1,8 @@
+# Extended context-scaling suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Extreme contexts live here; the core matrix stops at 4096 tokens on purpose.
+input_tokens: [128, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+output_tokens: 256
+
+# Cases that cannot run on the current hardware/model/runtime are recorded as
+# OOM / UNSUPPORTED / FAILED and are never silently dropped.
+failure_statuses: [OOM, UNSUPPORTED, FAILED]

@@ -1,0 +1,4 @@
+# Startup suite (frozen for PRADIUM-RUNTIME-BENCH-v1).
+# Measures process start -> ready -> first token, cold vs warm.
+warm_request_count: 5
+request_profile: MM
