@@ -39,6 +39,7 @@ def run_prefix_cache(
     requests_per_ratio: int = PREFIX_REQUESTS_PER_RATIO,
     output_tokens: int = 256,
     unique_suffix_tokens_at_full_reuse: int = PREFIX_UNIQUE_SUFFIX_TOKENS_AT_FULL_REUSE,
+    measured_runs: int = 3,
 ) -> tuple[list[RawResult], dict[str, Any]]:
     """Run the prefix-reuse matrix; returns records plus per-case metadata."""
     records: list[RawResult] = []
@@ -52,16 +53,33 @@ def run_prefix_cache(
             unique_suffix_tokens_at_full_reuse,
         )
         for scenario in scenarios:
-            case = _run_case(
-                ctx,
-                provider,
-                ratio,
-                scenario,
-                group,
-                output_tokens,
-            )
-            records.extend(case["records"])
-            extras["prefix_cache"][f"{ratio:.2f}:{scenario}"] = case["meta"]
+            for run_index in range(measured_runs):
+                case = _run_case(
+                    ctx,
+                    provider,
+                    ratio,
+                    scenario,
+                    group,
+                    output_tokens,
+                    run_index,
+                )
+                records.extend(case["records"])
+                key = f"{ratio:.2f}:{scenario}"
+                entry = extras["prefix_cache"].setdefault(
+                    key,
+                    {
+                        "ratio": ratio,
+                        "scenario": scenario,
+                        "total_input_tokens": group.total_input_tokens,
+                        "shared_prefix_tokens": group.shared_prefix_tokens,
+                        "unique_suffix_tokens": group.unique_suffix_tokens,
+                        "expected_reuse_ratio": group.expected_reuse_ratio(),
+                        "requests": 0,
+                        "reused_tokens": [],
+                    },
+                )
+                entry["requests"] += len(case["records"])
+                entry["reused_tokens"].extend(case["reused_tokens"])
     return records, extras
 
 
@@ -72,17 +90,17 @@ def _run_case(
     scenario: str,
     group,
     output_tokens: int,
+    run_index: int,
 ) -> dict[str, Any]:
     records: list[RawResult] = []
     reused_tokens: list[int] = []
-    prime_records: list[RawResult] = []
 
     for index, prompt in enumerate(group.requests):
         # --- prime the shared prefix (recorded as warmup, excluded from stats) ---
         prime_request = provider.request(
             prompt,
             output_tokens,
-            run_index=index,
+            run_index=run_index,
             warmup=True,
             profile=f"PREFIX-{ratio:.2f}",
             prefix_id=group.prefix_id,
@@ -94,9 +112,7 @@ def _run_case(
                 "expected_reuse_ratio": group.expected_reuse_ratio(),
             },
         )
-        prime_records.append(
-            execute_request(ctx, prime_request, concurrency=1)
-        )
+        execute_request(ctx, prime_request, concurrency=1)
 
         # --- session boundary for cross-session testing ---
         if scenario == "cross_session":
@@ -106,7 +122,7 @@ def _run_case(
         request = provider.request(
             prompt,
             output_tokens,
-            run_index=index,
+            run_index=run_index,
             warmup=False,
             profile=f"PREFIX-{ratio:.2f}",
             prefix_id=group.prefix_id,
@@ -123,16 +139,4 @@ def _run_case(
         if record.prefix_reused_tokens is not None:
             reused_tokens.append(record.prefix_reused_tokens)
 
-    return {
-        "records": records,
-        "meta": {
-            "ratio": ratio,
-            "scenario": scenario,
-            "total_input_tokens": group.total_input_tokens,
-            "shared_prefix_tokens": group.shared_prefix_tokens,
-            "unique_suffix_tokens": group.unique_suffix_tokens,
-            "expected_reuse_ratio": group.expected_reuse_ratio(),
-            "requests": len(records),
-            "reused_tokens": reused_tokens,
-        },
-    }
+    return {"records": records, "reused_tokens": reused_tokens}

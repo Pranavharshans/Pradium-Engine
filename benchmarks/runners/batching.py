@@ -53,6 +53,8 @@ def run_batching(
             case_records.extend(
                 _run_batch(ctx, provider, profile, batch_size, run_index, warmup)
             )
+        for record in case_records:
+            ctx.session.append_raw(record)
         records.extend(case_records)
         successful = [
             r for r in case_records if r.execution_status == "SUCCESS"

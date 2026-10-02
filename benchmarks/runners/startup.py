@@ -94,4 +94,4 @@ def run_startup(
     )
     milestones["warm_request_count"] = warm_request_count
     milestones["process_start_ns"] = t_process_start
-    return records, milestones
+    return records, {"startup": milestones}

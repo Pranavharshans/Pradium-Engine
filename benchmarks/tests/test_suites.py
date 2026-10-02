@@ -132,6 +132,7 @@ class TestPrefixCacheRunner(unittest.TestCase):
                 scenarios=("same_session", "cross_session"),
                 requests_per_ratio=2,
                 output_tokens=4,
+                measured_runs=1,
             )
             measured = [r for r in records if not r.warmup]
             self.assertEqual(len(measured), 8)
@@ -206,9 +207,10 @@ class TestStartupRunner(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ctx = make_ctx(tmp, MockRuntime(FAST), "startup")
             provider = PromptProvider.from_spec("simple")
-            records, milestones = run_startup(
+            records, extras = run_startup(
                 ctx, provider, request_profile="SS", warm_request_count=2
             )
+            milestones = extras["startup"]
             self.assertEqual(len(records), 3)  # 1 cold + 2 warm
             self.assertIsNotNone(milestones["runtime_init_ms"])
             self.assertIsNotNone(milestones["model_load_ms"])
