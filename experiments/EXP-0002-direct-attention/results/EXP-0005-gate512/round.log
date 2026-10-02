@@ -1,0 +1,40 @@
+=== candidate round: EXP-0005-gate512 (EXP-0002-direct-attention) ===
+Fri Oct  2 20:02:28 UTC 2026
+TREE=/workspace/exp/builds/cand-series-0001-0002 ENV=exllamav3 PROFILES=SS,SM,SL,MS,MM,ML,LS,LM,LL
+--- PRADIUM_BUILD.json ---
+{
+  "upstream": "https://github.com/turboderp-org/exllamav3",
+  "upstream_commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
+  "patches": [
+    {
+      "name": "0001-cache-graph-replay-bindings.patch",
+      "sha256": "aa790deaca20c3eea25fe6bb3da796249d1daa72c384226208c506ec035b4ad1"
+    },
+    {
+      "name": "0002-direct-single-request-attention.patch",
+      "sha256": "b0f4c05532d9590706bf678b32f86cfd39a6e2b24fd1a448b029a3b79554b143"
+    }
+  ],
+  "gpu_validated": false
+}
+
+--- matrix (core workloads: SS,SM,SL,MS,MM,ML,LS,LM,LL) ---
+COMMAND: run_matrix env=exllamav3 pythonpath_prefix=/workspace/exp/builds/cand-series-0001-0002 profiles=SS,SM,SL,MS,MM,ML,LS,LM,LL
+ENV: EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=512
+session: /workspace/exp/pradium/experiments/EXP-0002-direct-attention/results/EXP-0005-gate512/session/20261002-200233_exllamav3_official_014627
+raw records: 117
+SUITE_EXIT=0
+SESSION=/workspace/exp/pradium/experiments/EXP-0002-direct-attention/results/EXP-0005-gate512/session/20261002-200233_exllamav3_official_014627/
+
+--- decode profiles ---
+SKIP_PROFILES=1: matrix-only round (decision metric); profiles run separately
+
+--- correctness: greedy token IDs vs frozen official matrix session ---
+experiments/tools/run_candidate.sh: line 66: python: command not found
+CORRECTNESS_EXIT=127
+
+--- decode summary ---
+experiments/tools/run_candidate.sh: line 74: python: command not found
+
+=== round done ===
+Fri Oct  2 20:15:26 UTC 2026

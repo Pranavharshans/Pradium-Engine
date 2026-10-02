@@ -1,0 +1,11 @@
+CPU validation gate (engine/pradium/tests), run on the VM:
+Fri Oct  2 17:30:36 UTC 2026
+2d455cf781a15aa2b42c01e9b989c6a25dc5747c
+test_patch_python_syntax (test_patch_series.PatchSeriesTests.test_patch_python_syntax) ... ok
+test_replay_bindings_native (test_patch_series.PatchSeriesTests.test_replay_bindings_native) ... ok
+test_unsupported_direct_shapes (test_patch_series.PatchSeriesTests.test_unsupported_direct_shapes) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 58.993s
+
+OK

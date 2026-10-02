@@ -1,0 +1,203 @@
+{
+  "label": "exp0002-SS",
+  "repo": {
+    "repo": "/workspace/exp/pradium",
+    "revision": "f1c1c4862af82584932d22a43f0d9efcea2b3e63",
+    "branch": "bench/exl3-runtime-b0-rtx3060",
+    "dirty": true
+  },
+  "torch": "2.10.0+cu128",
+  "exllamav3_file": "/workspace/exp/builds/cand-series-0001-0002/exllamav3/__init__.py",
+  "exllamav3_version": null,
+  "cuda": "12.8",
+  "device": "NVIDIA GeForce RTX 3060",
+  "config": {
+    "model_dir": "/workspace/models/minicpm5-2b-exl3",
+    "prompt_tokens": 128,
+    "max_new_tokens": 64,
+    "max_num_tokens": 32768,
+    "max_batch_size": 16,
+    "max_chunk_size": 2048,
+    "sampler": "ArgmaxSampler",
+    "eos_masked": true
+  },
+  "env": {
+    "EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS": "4097"
+  },
+  "requests": [
+    {
+      "role": "warmup",
+      "steps": 64,
+      "tokens": 64,
+      "eos_reason": "max_new_tokens",
+      "ttft_ms": 1208.289617,
+      "decode_ms": 1674.126188,
+      "decode_tok_s": 37.63157189199886,
+      "itl_ms": {
+        "n": 61,
+        "mean_ms": 27.05235431147541,
+        "median_ms": 7.450095,
+        "p95_ms": 8.901917,
+        "p99_ms": 481.81845079999835,
+        "min_ms": 7.286007,
+        "max_ms": 1170.43799,
+        "stdev_ms": 148.84920500621277
+      },
+      "itl_dropped_first": 2
+    },
+    {
+      "role": "measured",
+      "steps": 64,
+      "tokens": 64,
+      "eos_reason": "max_new_tokens",
+      "ttft_ms": 9.992753,
+      "decode_ms": 1627.604251,
+      "decode_tok_s": 38.70719799440976,
+      "itl_ms": {
+        "n": 61,
+        "mean_ms": 26.438588901639346,
+        "median_ms": 7.462912,
+        "p95_ms": 11.004527,
+        "p99_ms": 461.01477719999843,
+        "min_ms": 7.375846,
+        "max_ms": 1130.140278,
+        "stdev_ms": 143.67604263811728
+      },
+      "itl_dropped_first": 2,
+      "step_wall_ms": {
+        "n": 64,
+        "mean_ms": 8.02935421875,
+        "median_ms": 7.4685945,
+        "p95_ms": 10.0637125,
+        "p99_ms": 13.648360129999995,
+        "min_ms": 7.363613,
+        "max_ms": 14.926787,
+        "stdev_ms": 1.3113475143786737
+      },
+      "profiled": {
+        "steps": 24,
+        "wall_ms_per_step": 8.636414416666666,
+        "kernel_ms_per_step": 6.845967374999984,
+        "busy_ms_per_step": 6.853201916666662,
+        "span_ms_per_step": 8.5455465,
+        "h2d_per_step": 4.0,
+        "d2h_per_step": 1.0,
+        "top_kernels": [
+          {
+            "key": "void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const**, void*, int, int, int, int*, __half const**, __half*, __half const**, long*, __half*, int, int, int, int, int, int const*, void**, int const*, int const*, int)",
+            "count": 1008,
+            "self_device_us": 54029.268000000055
+          },
+          {
+            "key": "void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, void*, int, int, int, int*, __half const*, __half*, __half const*)",
+            "count": 2016,
+            "self_device_us": 38623.99100000032
+          },
+          {
+            "key": "void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short const**, void*, int, int, int, int*, __half const**, __half*, __half const**, long*, __half*, int, int, int, int, int, int const*, void**, int const*, int const*, int)",
+            "count": 1008,
+            "self_device_us": 24873.98600000001
+          },
+          {
+            "key": "_paged_attn_decode_split_kernel",
+            "count": 1008,
+            "self_device_us": 20761.735999999815
+          },
+          {
+            "key": "void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const*, void*, int, int, int, int*, __half const*, __half*, __half const*)",
+            "count": 24,
+            "self_device_us": 14655.156999999976
+          },
+          {
+            "key": "void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*, __half*, float*, float, int, int, float, float, int)",
+            "count": 1008,
+            "self_device_us": 2423.874000000035
+          },
+          {
+            "key": "void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, int, int, int, int, int, int, int, int, unsigned int const*, unsigned int const*, float, void const*, void const*, float, float, bool, int, float, int, int, int, int)",
+            "count": 1008,
+            "self_device_us": 2383.9409999995037
+          },
+          {
+            "key": "void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*, __half*, float*, float, int, int, float, float, int)",
+            "count": 1032,
+            "self_device_us": 2162.6829999998586
+          },
+          {
+            "key": "void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul> >(int, at::native::CUDAFunctor_add<float>, std::array<char*, 3ul>)",
+            "count": 1008,
+            "self_device_us": 1704.1140000000728
+          },
+          {
+            "key": "_paged_kv_update_kernel",
+            "count": 1008,
+            "self_device_us": 1344.5439999996092
+          },
+          {
+            "key": "void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)",
+            "count": 1008,
+            "self_device_us": 1202.0380000002428
+          },
+          {
+            "key": "void (anonymous namespace)::fs_partial_argmax_kernel<__half, 0>(__half const*, __half const*, unsigned int const*, float const*, ValIdx*, unsigned char const*, int, int, int, bool, int, float, float, int, float, unsigned int)",
+            "count": 24,
+            "self_device_us": 99.26300000008814
+          },
+          {
+            "key": "(anonymous namespace)::fs_finalize_kernel(ValIdx const*, unsigned long*, int)",
+            "count": 24,
+            "self_device_us": 38.62200000003759
+          },
+          {
+            "key": "cudaPointerGetAttributes",
+            "count": 72,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "Activity Buffer Request",
+            "count": 1,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaMemcpyAsync",
+            "count": 120,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaLaunchKernel",
+            "count": 3096,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaPeekAtLastError",
+            "count": 2088,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaGraphLaunch",
+            "count": 2016,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaLaunchCooperativeKernel",
+            "count": 24,
+            "self_device_us": 0.0
+          },
+          {
+            "key": "cudaDeviceSynchronize",
+            "count": 25,
+            "self_device_us": 0.0
+          }
+        ]
+      }
+    }
+  ],
+  "telemetry_after": {
+    "util_pct": 75.0,
+    "power_w": 70.14,
+    "sm_clock_mhz": 1920.0,
+    "temp_c": 61.0,
+    "mem_used_mb": 2805.0
+  },
+  "max_memory_allocated_mb": 2591.0126953125
+}
