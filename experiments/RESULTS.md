@@ -78,7 +78,22 @@ Build: `/workspace/exp/builds/cand-series-0001-0002`, materialized by
 `engine/pradium/build.py` from the pin + patches 0001-0002, built in place with
 `TORCH_CUDA_ARCH_LIST=8.6 MAX_JOBS=4 EXLLAMA_EXT_COMPRESS=0`.
 
-## 5. Closed hypotheses (measured, negative)
+## 5. Remaining bottleneck and next steps (measured basis)
+
+The decode step's GPU time is 7.2 ms (SS) / 8.2 ms (LL prompts), of which
+4.9 ms / 4.9 ms is the EXL3 layer GEMMs. Those kernels move 991 MB/token at
+199-250 GB/s where the LM-head kernel of the same format reaches 321 GB/s
+(97% of the VM's measured 330 GB/s peak). Closing that gap is kernel work, not
+configuration, and it is the single largest remaining item:
+
+| opportunity | measured basis | expected |
+|---|---|---|
+| EXL3 M=1 layer-shape kernel efficiency | 199-250 GB/s vs 321 GB/s head | up to 1.2 ms/step |
+| fold the per-layer norms and residual adds into the BC attention/MLP graphs | 127 elementwise launches + 84 graph launches per step | ~0.4 ms/step |
+| decode attention split geometry at 4096-token context | 1.96 ms/step split kernel (29% of KV-read bandwidth) | unknown, needs kernel work |
+| whole-forward single graph (approach A) | host gap is only 0.6 ms clean once buffers are reused | ~0.3 ms/step |
+
+## 6. Closed hypotheses (measured, negative)
 
 | hypothesis | result |
 |---|---|
