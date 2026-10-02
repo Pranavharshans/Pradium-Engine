@@ -22,6 +22,7 @@ Status vocabulary: PLANNED / RUNNING / KEEP / REJECT / INCONCLUSIVE.
 | EXP-0000 | Freeze/verify the baseline and decompose a decode step into GPU kernel, host gap and launch/readback counts | KEEP (evidence) | `eba4849` | tooling `04fa920` | `17c2c9e` | n/a | n/a |
 | EXP-0001 | Patch 0001 (cache graph-replay argument bindings) removes host bookkeeping per replay | RUNNING | `86a5290` | build `cand-series-0001-0002` (direct attn OFF) | — | — | — |
 | EXP-0002 | Patch 0002 (direct single-request attention, regime 2) removes split/combine fixed cost for contexts <= 4096 tokens | RUNNING | EXP-0001 | same build, `EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097` | — | — | — |
+| EXP-0003 | Patch 0003 (persistent decode buffers) removes ~168 allocations/step and stabilises replay pointers | PLANNED | EXP-0002 verdict | `patches/0003-static-decode-buffers.patch` (Python-only) | — | — | — |
 
 ## EXP-0000 results (measured)
 
@@ -123,6 +124,8 @@ dominates short-context decode attention.
 | EXP-0004 | fold pre-norm into BC_Attention and pre-norm/post-add into BC_MLP | ~0.5 ms/step all workloads | 127 elementwise launches/step |
 | EXP-0005 | EXL3 layer-shape kernel efficiency | 1.5-1.8 ms/step, needs new kernels | 205 GB/s vs the 321 GB/s the head reaches |
 | EXP-0006 | LL/SM tail investigation (harness-side jitter) | unknown | LL harness TPOT 12.96 ms vs 9.3 ms clean step |
+| CLOSED | int8-activation GEMV dispatch change | rejected | measured *faster* than fp16 on this GPU (249 vs 160 GB/s) |
+| CLOSED | GEMM kernel-shape dispatch change | rejected | default dispatch already optimal; the ~205 GB/s layer-shape ceiling is a kernel property (head reaches 321 GB/s = 97% of the 330 GB/s measured peak) |
 
 
 - The VM is an unprivileged container: no kernel profilers; profiling uses

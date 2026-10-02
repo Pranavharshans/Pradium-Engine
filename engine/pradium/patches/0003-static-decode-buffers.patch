@@ -1,0 +1,315 @@
+diff --git a/exllamav3/modules/transformer.py b/exllamav3/modules/transformer.py
+--- a/exllamav3/modules/transformer.py	2026-09-27 22:12:45
++++ b/exllamav3/modules/transformer.py	2026-10-02 17:58:29
+@@ -1,14 +1,20 @@
+ from __future__ import annotations
+ from typing_extensions import override
++import os
+ import torch
+ from ..util.tensor import to2
+ from ..model.config import Config
+ from . import Module, RMSNorm, LayerNorm, Attention, GatedDeltaNet, GatedMLP, MLP, BlockSparseMLP, Linear
+ from .hyperconnections import HyperConnection
+ from ..util import profile_opt
++from ..util import decode_buffers as _db
+ 
+ class TransformerBlock(Module):
+ 
++    #: Reuse persistent output buffers on the single-token decode path instead of allocating
++    #: four activations per layer per token (EXL3_DECODE_BUFFER_REUSE=0 disables for A/B).
++    decode_buffer_reuse = os.environ.get("EXL3_DECODE_BUFFER_REUSE", "1") != "0"
++
+     def __init__(
+         self,
+         config: Config | None,
+@@ -134,6 +140,17 @@
+         )
+ 
+     @override
++    def _decode_out(self, key: str, x: torch.Tensor, dtype: torch.dtype):
++        """Persistent output buffer for the single-token decode path, else None.
++
++        Prefill and multi-token shapes keep allocating: their shapes vary with the chunk
++        size, and their allocation cost is amortized over many tokens.
++        """
++        if not self.decode_buffer_reuse or x.dim() != 3 or x.shape[0] != 1 or x.shape[1] != 1:
++            return None
++        return _db.decode_out(self, key, x.shape, dtype, x.device)
++
++
+     def forward(
+         self,
+         x: torch.Tensor,
+@@ -153,10 +170,11 @@
+                 if self.attn_norm:
+                     y = self.attn_norm.forward(y, params, out_dtype = torch.half)
+             elif self.attn_norm:
+-                y = self.attn_norm.forward(x, params, out_dtype = torch.half)
++                y = self.attn_norm.forward(x, params, out_dtype = torch.half,
++                                           out = self._decode_out("attn_norm", x, torch.half))
+             else:
+                 y = x.half()
+-            y = self.attn.forward(y, params)
++            y = self.attn.forward(y, params, out = self._decode_out("attn_out", x, torch.half))
+             if params.get("prefill") and not export_state:
+                 return x
+             if self.attn_resid_scalar is not None:
+@@ -179,12 +197,14 @@
+             else:
+                 params["residual"] = x
+                 if y_resid is not None:
+-                    y = self.mlp_norm.forward(y_resid, params, out_dtype = torch.half, residual_in = x)
++                    y = self.mlp_norm.forward(y_resid, params, out_dtype = torch.half, residual_in = x,
++                                              out = self._decode_out("mlp_norm", x, torch.half))
+                 elif self.mlp_norm:
+-                    y = self.mlp_norm.forward(x, params, out_dtype = torch.half)
++                    y = self.mlp_norm.forward(x, params, out_dtype = torch.half,
++                                              out = self._decode_out("mlp_norm", x, torch.half))
+                 else:
+                     y = x.half()
+-            y = self.mlp.forward(y, params)
++            y = self.mlp.forward(y, params, out = self._decode_out("mlp_out", x, torch.half))
+             if self.mlp_resid_scalar is not None:
+                 y *= self.mlp_resid_scalar
+             if self.mlp_hc:
+diff --git a/exllamav3/modules/mlp.py b/exllamav3/modules/mlp.py
+--- a/exllamav3/modules/mlp.py	2026-09-27 22:12:45
++++ b/exllamav3/modules/mlp.py	2026-10-02 17:57:29
+@@ -10,6 +10,7 @@
+ from ..constants import MAX_MLP_INTERMEDIATE
+ from ..model.model_tp_alloc import TPAllocation
+ from .multilinear import MultiLinear
++from ..util import decode_buffers as _db
+ from ..util.tensor import g_tensor_cache
+ 
+ MAX_BSZN = 8  # must match MAX_BSZN in exllamav3_ext/libtorch/mlp.h and block_sparse_mlp.py
+@@ -269,7 +270,8 @@
+         self,
+         x: torch.Tensor,
+         params: dict,
+-        out_dtype: torch.dtype | None = None
++        out_dtype: torch.dtype | None = None,
++        out: torch.Tensor | None = None
+     ) -> torch.Tensor:
+ 
+         # Fused C++ path for single-token decode, replayed through an internal CUDA graph from
+@@ -279,7 +281,9 @@
+             self.bc is not None and bsz == 1 and q_len == 1 and
+             x.dtype == torch.float16 and x.is_contiguous()
+         ):
+-            d = torch.empty_like(x, dtype = out_dtype or self.out_dtype)
++            if not _db.reuse(out, x.shape, out_dtype or self.out_dtype):
++                out = None
++            d = out if out is not None else torch.empty_like(x, dtype = out_dtype or self.out_dtype)
+             self.bc.run_bsz1(x, d)
+             if self.tp_reduce:
+                 self.tp_collect(params["backend"], d)
+@@ -730,7 +734,8 @@
+         self,
+         x: torch.Tensor,
+         params: dict,
+-        out_dtype: torch.dtype | None = None
++        out_dtype: torch.dtype | None = None,
++        out: torch.Tensor | None = None
+     ) -> torch.Tensor:
+         bsz, q_len, dim = x.shape
+ 
+diff --git a/exllamav3/modules/attn.py b/exllamav3/modules/attn.py
+--- a/exllamav3/modules/attn.py	2026-09-27 22:12:45
++++ b/exllamav3/modules/attn.py	2026-10-02 17:57:10
+@@ -609,7 +609,8 @@
+         self,
+         x: torch.Tensor,
+         params: dict,
+-        out_dtype: torch.dtype | None = None
++        out_dtype: torch.dtype | None = None,
++        out: torch.Tensor | None = None
+     ) -> torch.Tensor:
+ 
+         if self.num_kv_heads == 0:
+@@ -621,7 +622,7 @@
+             attn_mode = params.get("attn_mode", "flash_attn_nc")
+             match attn_mode:
+                 case "flash_attn":
+-                    x = self.decode_flash_attn(x, bsz, seqlen, params)
++                    x = self.decode_flash_attn(x, bsz, seqlen, params, out = out)
+                 case "flash_attn_nc":
+                     x = self.decode_flash_attn_nc(x, bsz, seqlen, params)
+                 case _:
+@@ -948,7 +949,7 @@
+         return o
+ 
+ 
+-    def bc_attn_step(self, x, cache, params, block_table, cache_seqlens, host_seqlens = None):
++    def bc_attn_step(self, x, cache, params, block_table, cache_seqlens, host_seqlens = None, out = None):
+         """
+         Graph-captured decode attention block (projections through o_proj as one C++ call,
+         replayed as one CUDA graph after warmup). Returns the block output, or None when the
+@@ -974,7 +975,7 @@
+             return None
+         return bca.step(
+             x, cache_seqlens, block_table, position, positions, position_ids, inv_freq,
+-            causal = params.get("causal", True), host_seqlens = host_seqlens
++            causal = params.get("causal", True), host_seqlens = host_seqlens, out = out
+         )
+ 
+ 
+@@ -1084,6 +1085,7 @@
+         bsz: int,
+         seqlen: int,
+         params: dict,
++        out: torch.Tensor | None = None,
+     ):
+         cache = params.get("cache")
+         # In TP child processes the cache param arrives as an opaque id; resolve it to the local split
+@@ -1122,7 +1124,7 @@
+             bsz <= _bc_max_bsz and seqlen <= _bc_max_qlen
+         ):
+             o = self.bc_attn_step(x, cache, params, block_table, cache_seqlens,
+-                                  host_seqlens = qsa_seqlens_cpu)
++                                  host_seqlens = qsa_seqlens_cpu, out = out)
+             if o is not None:
+                 return o
+ 
+diff --git a/exllamav3/modules/rmsnorm.py b/exllamav3/modules/rmsnorm.py
+--- a/exllamav3/modules/rmsnorm.py	2026-09-27 22:12:45
++++ b/exllamav3/modules/rmsnorm.py	2026-10-02 17:56:56
+@@ -3,6 +3,7 @@
+ import torch
+ from torch import nn
+ from ..model.config import Config
++from ..util import decode_buffers as _db
+ from . import Module
+ from ..ext import exllamav3_ext as ext
+ from ..model.model_tp_alloc import TPAllocation
+@@ -110,14 +111,17 @@
+         out_dtype: torch.dtype | None = None,
+         residual: torch.Tensor | None = None,
+         residual_in: torch.Tensor | None = None,
++        out: torch.Tensor | None = None,
+     ) -> torch.Tensor:
+         dtype = out_dtype or self.out_dtype
++        if out is not None and not _db.reuse(out, x.shape, dtype):
++            out = None
+ 
+         # Fused pre-norm residual: residual_in += x (in place), y = norm(residual_in)
+         if residual_in is not None:
+             x_2d = x.view(-1, x.shape[-1])
+             r_2d = residual_in.view(-1, residual_in.shape[-1])
+-            y_2d = torch.empty_like(x_2d, dtype = dtype)
++            y_2d = out.view(-1, x.shape[-1]) if out is not None else torch.empty_like(x_2d, dtype = dtype)
+             ext.rms_norm_res_in(
+                 x_2d,
+                 self.weight,
+@@ -139,7 +143,10 @@
+             if self.groups > 1:
+                 assert x.shape[-2] == self.groups
+             x_2d = x.reshape(-1, x.shape[-1]).contiguous()
+-            y_2d = torch.empty_like(x_2d, dtype = dtype) if residual is None else residual.view_as(x_2d)
++            if out is not None:
++                y_2d = out.view(-1, x.shape[-1])
++            else:
++                y_2d = torch.empty_like(x_2d, dtype = dtype) if residual is None else residual.view_as(x_2d)
+             ext.rms_norm(
+                 x_2d,
+                 self.weight,
+@@ -154,7 +161,10 @@
+             y = y_2d.view_as(x)
+         else:
+             assert self.groups == 1
+-            y = torch.empty_like(x, dtype = dtype) if residual is None else residual.view_as(x)
++            if out is not None:
++                y = out.view_as(x)
++            else:
++                y = torch.empty_like(x, dtype = dtype) if residual is None else residual.view_as(x)
+             ext.rms_norm(
+                 x,
+                 self.weight,
+diff --git a/exllamav3/modules/attention_fn/bc_attn.py b/exllamav3/modules/attention_fn/bc_attn.py
+--- a/exllamav3/modules/attention_fn/bc_attn.py	2026-10-02 17:56:02
++++ b/exllamav3/modules/attention_fn/bc_attn.py	2026-10-02 17:57:10
+@@ -4,6 +4,7 @@
+ 
+ from ...ext import exllamav3_ext as ext
+ from ...constants import PAGE_SIZE
++from ...util import decode_buffers as _db
+ from ...util.tensor import g_tensor_cache
+ from .smem import smem_limit
+ from .pradium_policy import direct_attention_eligible
+@@ -583,6 +584,7 @@
+         inv_freq: torch.Tensor | None,
+         causal: bool = True,
+         host_seqlens: torch.Tensor | None = None,
++        out: torch.Tensor | None = None,
+     ) -> torch.Tensor | None:
+         bsz, q_len, _ = x.shape
+ 
+@@ -623,7 +625,12 @@
+             except BCKernelTooLarge:
+                 return None   # eager path sizes its own tiles
+             self.slot_widths[(bsz, q_len, regime)] = skey
+-        y = torch.empty((bsz, q_len, self.hidden_size), dtype = self.o_dtype, device = x.device)
++        # Decode reuses a persistent output buffer when the caller supplies one (it must
++        # already match the block's output shape/dtype); the graph patches the pointer either
++        # way, so a stable address also skips the replay argument update.
++        if not _db.reuse(out, (bsz, q_len, self.hidden_size), self.o_dtype):
++            out = None
++        y = out if out is not None else torch.empty((bsz, q_len, self.hidden_size), dtype = self.o_dtype, device = x.device)
+         self.bc.run(bsz, q_len, x, y, cache_seqlens, block_table, position, positions,
+                     position_ids, inv_freq, regime, t_total)
+         return y
+diff --git a/exllamav3/util/decode_buffers.py b/exllamav3/util/decode_buffers.py
+new file mode 100644
+--- /dev/null	2026-10-02 17:58:43
++++ b/exllamav3/util/decode_buffers.py	2026-10-02 17:56:49
+@@ -0,0 +1,50 @@
++"""Persistent per-module output buffers for the single-token decode path.
++
++A decoded token rebuilds the same small activation tensors in every one of the
++42 layers: the attention input norm output, the attention block output, the MLP
++input norm output and the MLP output. The caching allocator makes each
++allocation cheap in isolation, but at ~168 allocations per decoded token the
++host cost is measurable, and the churning addresses defeat the graph-replay
++pointer comparison that skips unchanged arguments.
++
++``decode_out`` returns one persistent buffer per (owner, key) pair, allocated
++on first use for the exact shape/dtype/device that was requested and reused
++afterwards. It is intentionally only used by the single-token decode path:
++prefill and batched shapes keep allocating, because their shapes vary and the
++per-call allocation cost is amortized over many tokens there.
++
++Safety: a buffer is written by one producer and consumed by the next operation
++on the same stream before the producer runs again; distinct keys never alias,
++so an outstanding read can never be overwritten by a concurrent write.
++"""
++
++from __future__ import annotations
++
++import torch
++
++
++def decode_out(owner, key: str, shape, dtype: torch.dtype, device) -> torch.Tensor:
++    """Persistent output buffer for ``owner`` (a Module), keyed by ``key``."""
++    cache = getattr(owner, "_decode_out_cache", None)
++    if cache is None:
++        cache = {}
++        owner._decode_out_cache = cache
++    t = cache.get(key)
++    if (
++        t is None
++        or tuple(t.shape) != tuple(shape)
++        or t.dtype != dtype
++        or t.device != device
++    ):
++        t = torch.empty(tuple(shape), dtype=dtype, device=device)
++        cache[key] = t
++    return t
++
++
++def reuse(out: torch.Tensor | None, shape, dtype: torch.dtype) -> bool:
++    """True when ``out`` can serve as an output buffer of this shape and dtype."""
++    return (
++        out is not None
++        and tuple(out.shape) == tuple(shape)
++        and out.dtype == dtype
++    )
