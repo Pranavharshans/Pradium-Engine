@@ -90,7 +90,37 @@ nondeterminism rather than the attention change (see `wheel-repro`).
 | EXP-0001 patch 0001 | KEEP | no regression; no measurable change (as expected for host bookkeeping); 117/117 token-identical | `EXP-0001-patch-series/results/EXP-0001-patch0001` |
 | EXP-0002 patch 0002 (coarse gate) | REJECT as configured | SS -4.5% step time, but SM..ML +2..+76%; gate cannot discriminate | `EXP-0002-direct-attention/results/EXP-0002-direct` |
 | EXP-0003 patch 0003 (buffers) | INCONCLUSIVE | within +-1% of its parent on every workload | `EXP-0003-static-buffers/results/EXP-0003-buffers-on` |
-| EXP-0005 patch 0005 (precise gate, 512) | pending | expected: keeps SS, drops the losses | `EXP-0002-direct-attention/results/EXP-0005-gate512` |
+| EXP-0005 patch 0005 (precise gate, 512) | REJECT (correctness) | recovers every coarse-gate loss (SL/MS/MM/ML back to parity) and keeps SS at -3.6%, but changes greedy tokens in SM | `EXP-0002-direct-attention/results/EXP-0005-gate512` |
+
+### The gate refinement round (EXP-0005)
+
+| workload | ITL med, direct OFF | ITL med, coarse gate | ITL med, live-token gate 512 | tokens vs frozen |
+|---|---|---|---|---|
+| SS | 7.84 | 7.48 | **7.56** | 13/13 identical |
+| SM | 7.92 | 8.24 | 8.10 | **0/13 identical** (first diff at token 73) |
+| SL | 8.00 | 10.34 | **8.33** | 13/13 |
+| MS | 8.03 | 11.51 | **8.08** | 13/13 |
+| MM | 8.04 | 12.06 | **8.06** | 13/13 |
+| ML | 8.09 | 14.16 | **8.10** | 13/13 |
+| LS | 8.91 | 8.94 | 8.91 | 13/13 |
+| LM | 8.93 | 8.92 | 8.92 | 13/13 |
+| LL | 8.99 | 9.03 | 9.03 | 13/13 |
+
+The live-token gate removes every loss the coarse gate caused and keeps the
+192-token-context gain, but the direct reduction order still flips a greedy
+token in SM (deterministically at token 73, 13/13 runs), so the attention
+change is rejected on correctness grounds rather than on speed.
+
+### Reproducibility controls
+
+- The unpatched wheel, re-run in a fresh session, reproduces the frozen
+  session's greedy tokens exactly (39/39 on SM, LM, LL)
+  (`results/wheel-repro/`).
+- The candidate build with the direct regime OFF reproduces the frozen session
+  exactly on all nine workloads (117/117) — the build itself is faithful.
+- Direct vs split attention in one process on the same prompt is bit-identical
+  at the fp16 logits (max |delta| = 0.0) over 16 generated tokens at 128, 1024
+  and 4096 prompt tokens (`results/attn-diff/`).
 
 ## 4. Experiment history (commits, config, commands)
 
