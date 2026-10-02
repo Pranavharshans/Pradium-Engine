@@ -99,6 +99,32 @@ def _nvidia_smi_sample() -> dict:
         return {"error": str(exc)}
 
 
+def _git_provenance() -> dict:
+    """Revision of the checkout this script was launched from."""
+    import pathlib
+
+    repo = pathlib.Path(__file__).resolve().parents[2]
+    out: dict = {"repo": str(repo)}
+    try:
+        out["revision"] = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            capture_output=True, text=True, timeout=20, check=True,
+        ).stdout.strip()
+        out["branch"] = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, timeout=20, check=True,
+        ).stdout.strip()
+        out["dirty"] = bool(
+            subprocess.run(
+                ["git", "-C", str(repo), "status", "--porcelain"],
+                capture_output=True, text=True, timeout=20, check=True,
+            ).stdout.strip()
+        )
+    except Exception as exc:  # noqa: BLE001
+        out["error"] = str(exc)
+    return out
+
+
 def _eos_ids(cfg) -> list[int]:
     raw = getattr(cfg, "eos_token_id_list", None) or getattr(cfg, "eos_token_id", None)
     if isinstance(raw, int):
@@ -259,6 +285,7 @@ def run(args) -> dict:
 
     summary: dict = {
         "label": args.label,
+        "repo": _git_provenance(),
         "torch": torch.__version__,
         "exllamav3_file": exllamav3.__file__,
         "exllamav3_version": getattr(exllamav3, "__version__", None),
@@ -345,6 +372,7 @@ def main() -> int:
     ap.add_argument("--top-kernels", type=int, default=25)
     ap.add_argument("--label", default="unlabeled")
     ap.add_argument("--json-out", default=None)
+    ap.add_argument("--print-json", action="store_true", help="print the full JSON instead of a compact summary")
     args = ap.parse_args()
 
     summary = run(args)
@@ -352,8 +380,46 @@ def main() -> int:
     if args.json_out:
         with open(args.json_out, "w") as fh:
             fh.write(text + "\n")
-    print(text)
+    if args.print_json:
+        print(text)
+        return 0
+
+    measured = [r for r in summary["requests"] if r["role"] == "measured"]
+    print(f"== {summary['label']} == {summary['exllamav3_file']}")
+    print(
+        f"config: prompt={summary['config']['prompt_tokens']} "
+        f"new={summary['config']['max_new_tokens']} "
+        f"cache={summary['config']['max_num_tokens']} env={summary['env']}"
+    )
+    for r in measured:
+        print(
+            f"tokens={r['tokens']} eos={r['eos_reason']} "
+            f"ttft_ms={r.get('ttft_ms', float('nan')):.2f} "
+            f"decode_tok_s={r.get('decode_tok_s', float('nan')):.2f}"
+        )
+        itl = r.get("itl_ms", {})
+        print(
+            f"  itl ms: med={itl.get('median_ms', float('nan')):.3f} "
+            f"mean={itl.get('mean_ms', float('nan')):.3f} "
+            f"p99={itl.get('p99_ms', float('nan')):.3f} max={itl.get('max_ms', float('nan')):.3f}"
+        )
+        prof = r.get("profiled", {})
+        print(
+            f"  profiled steps={prof.get('steps')} "
+            f"wall={prof.get('wall_ms_per_step')} ms/step "
+            f"kernel={_fmt(prof.get('kernel_ms_per_step'))} ms/step "
+            f"busy={_fmt(prof.get('busy_ms_per_step'))} ms/step "
+            f"span={_fmt(prof.get('span_ms_per_step'))} ms/step "
+            f"h2d={prof.get('h2d_per_step')} d2h={prof.get('d2h_per_step')} per step"
+        )
+        for k in prof.get("top_kernels", [])[:12]:
+            per_step_us = k["self_device_us"] / max(prof.get("steps") or 1, 1)
+            print(f"    {per_step_us / 1000.0:7.3f} ms/step x{k['count']:>5}  {k['key'][:96]}")
     return 0
+
+
+def _fmt(value) -> str:
+    return "n/a" if value is None else f"{value:.3f}"
 
 
 if __name__ == "__main__":
