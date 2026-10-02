@@ -27,6 +27,17 @@ export SKIP_PROFILES=${SKIP_PROFILES:-1}
   cat "$TREE/PRADIUM_BUILD.json" 2>/dev/null
   echo
 
+  echo "=== applying patch 0004 (direct-attention configure fix) + incremental rebuild ==="
+  cd "$TREE" || exit 1
+  GIT_CEILING_DIRECTORIES="$(dirname "$TREE")" \
+    git apply "$R/engine/pradium/patches/0004-direct-attention-combine-optional.patch" \
+    && echo "patch 0004 applied" || echo "patch 0004 FAILED to apply"
+  source /workspace/envs/exllamav3/bin/activate
+  env MAX_JOBS=6 TORCH_CUDA_ARCH_LIST=8.6 EXLLAMA_EXT_COMPRESS=0 \
+    python setup.py build_ext --inplace 2>&1 | tail -4
+  python -c "import importlib.util,sys; sys.path.insert(0,'$TREE'); s=importlib.util.find_spec('exllamav3_ext'); print('ext:', s.origin)"
+  echo
+
   bash "$TOOLS/run_rounds.sh" exp0001 "$TREE"
   bash "$TOOLS/run_rounds.sh" exp0002 "$TREE"
   bash "$TOOLS/run_rounds.sh" attn-diff "$TREE"
