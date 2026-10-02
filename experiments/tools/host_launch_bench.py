@@ -58,7 +58,7 @@ def main() -> int:
     out = {}
 
     out["ext.rms_norm (direct)"] = time_calls(
-        lambda: ext.rms_norm(x, w, y, 1e-5, 0.0, 1.0), 2000
+        lambda: ext.rms_norm(x, w, y, 1e-5, 0.0, 1.0, False, False), 2000
     )
     out["ext.rms_norm_res_in (direct)"] = time_calls(
         lambda: ext.rms_norm_res_in(x, w, y, z, 1e-5, 0.0, 1.0), 2000
@@ -68,7 +68,7 @@ def main() -> int:
     out["torch view -1,dim"] = time_calls(lambda: x.view(-1, dim), 2000)
     out["ext.rms_norm with view+alloc"] = time_calls(
         lambda: ext.rms_norm(
-            x.view(-1, dim), w, torch.empty_like(x).view(-1, dim), 1e-5, 0.0, 1.0
+            x.view(-1, dim), w, torch.empty_like(x).view(-1, dim), 1e-5, 0.0, 1.0, False, False
         ),
         2000,
     )
@@ -87,6 +87,10 @@ def main() -> int:
         params = {}
         out["RMSNorm.forward (module)"] = time_calls(
             lambda: norm_module.forward(xx, params, out_dtype=torch.half), 2000
+        )
+        out["RMSNorm.forward res_in (module)"] = time_calls(
+            lambda: norm_module.forward(xx, params, out_dtype=torch.half, residual_in=z.view(1, 1, dim)),
+            2000,
         )
 
     print(json.dumps(
