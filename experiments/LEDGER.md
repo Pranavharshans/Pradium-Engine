@@ -22,7 +22,9 @@ Status vocabulary: PLANNED / RUNNING / KEEP / REJECT / INCONCLUSIVE.
 | EXP-0000 | Freeze/verify the baseline and decompose a decode step into GPU kernel, host gap and launch/readback counts | KEEP (evidence) | `eba4849` | tooling `04fa920` | `17c2c9e` | n/a | n/a |
 | EXP-0001 | Patch 0001 (cache graph-replay argument bindings) removes host bookkeeping per replay | RUNNING | `86a5290` | build `cand-series-0001-0002` (direct attn OFF) | — | — | — |
 | EXP-0002 | Patch 0002 (direct single-request attention, regime 2) removes split/combine fixed cost for contexts <= 4096 tokens | RUNNING | EXP-0001 | same build, `EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097` | — | — | — |
-| EXP-0003 | Patch 0003 (persistent decode buffers) removes ~168 allocations/step and stabilises replay pointers | PLANNED | EXP-0002 verdict | `patches/0003-static-decode-buffers.patch` (Python-only) | — | — | — |
+| EXP-0003 | Patch 0003 (persistent decode buffers) removes ~168 allocations/step and stabilises replay pointers | REJECT (no measurable effect) | EXP-0002 | `patches/0003-static-decode-buffers.patch` | `EXP-0003-static-buffers/results/EXP-0003-buffers-on` | within +-1% on every workload | n/a |
+| EXP-0004 | Patch 0004 fixes the direct-attention configure path (combine kernel optional) | KEEP (prerequisite) | EXP-0002 | `patches/0004-direct-attention-combine-optional.patch` | build log | regime 2 configures instead of raising | n/a |
+| EXP-0005 | Patch 0005 makes the direct-attention bound a precise live-token count | RUNNING | EXP-0002 | `patches/0005-direct-attention-live-length-gate.patch` | `EXP-0002-direct-attention/results/EXP-0005-gate512` | — | — |
 
 ## EXP-0000 results (measured)
 
@@ -114,6 +116,29 @@ splits are live at short context (25 us per launch at 192 tokens, 47 us at
 4096). The fixed cost measured across configurations (1.06 ms/step at 192
 tokens vs 1.16 at 1280) confirms the split/combine schedule, not the KV work,
 dominates short-context decode attention.
+
+## Round results (2026-10-02 19:10-20:15 UTC)
+
+All three rounds ran on the built candidate tree under the frozen protocol.
+Verdicts are based on the paired steady-state step time (ITL median) because
+the headline `decode_tok_s` carries a session-varying tail (LM moved 88.4 ->
+61.2 tok/s between two rounds while its ITL median stayed 8.93 -> 8.92 ms).
+
+- **EXP-0001** (patch 0001, direct OFF): KEEP. No regression on any workload;
+  no measurable change (host bookkeeping only, as predicted); the session
+  reproduced the frozen official session's greedy token IDs exactly, 117/117.
+- **EXP-0002** (patch 0002, coarse gate): REJECT as configured. The mechanism
+  works at 192-token contexts (SS step 7.84 -> 7.49 ms, kernel total
+  7.239 -> 6.846 ms/step, combine kernel gone) but the single-pass kernel loses
+  2-76% of the step at 384-2048 tokens (SM 8.09, SL 10.39, MS 11.50, MM 12.13,
+  ML 14.20 ms), and the padded-width gate cannot separate those cases. It also
+  correlates with deterministic token divergences vs the frozen session in 5 of
+  9 workloads, including two where the regime is OFF (LM, LL) — an unresolved
+  correctness question that alone rejects the change as configured.
+- **EXP-0003** (patch 0003, buffers): REJECT. Within +-1% of its parent on
+  every workload's ITL median.
+- **EXP-0004** (the configure fix): KEEP as a prerequisite (without it every
+  regime-2 call raises).
 
 ## In-flight state (2026-10-02 18:00 UTC)
 
