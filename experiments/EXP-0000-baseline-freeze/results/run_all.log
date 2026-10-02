@@ -1,0 +1,220 @@
+EXP-0000 evidence run
+Fri Oct  2 14:42:43 UTC 2026
+
+=== [1/2] baseline verification (harness matrix suite, profiles SS,MM,LL) ===
+COMMAND: python -m benchmarks run matrix --profiles SS,MM,LL (env exllamav3)
+session: /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/baseline-verify/20261002-144248_exllamav3_official_d57621
+raw records: 39
+SUITE_EXIT=0
+
+=== [2/2] decode-step profiles, nine core configurations ===
+
+--- profile SS (128/64) ---
+COMMAND: profile_decode.py --label baseline-SS --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-SS.json --prompt-tokens 128 --max-new-tokens 64 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-SS == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=128 new=64 cache=32768 env={}
+tokens=64 eos=max_new_tokens ttft_ms=9.93 decode_tok_s=35.17
+  itl ms: med=7.841 mean=29.108 p99=517.795 max=1272.083
+  profiled steps=24 wall=8.626673791666667 ms/step kernel=7.238 ms/step busy=7.246 ms/step span=8.535 ms/step h2d=4.0 d2h=1.0 per step
+      2.254 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.632 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.056 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.037 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.610 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.172 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.105 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.099 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile SM (128/256) ---
+COMMAND: profile_decode.py --label baseline-SM --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-SM.json --prompt-tokens 128 --max-new-tokens 256 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-SM == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=128 new=256 cache=32768 env={}
+tokens=256 eos=max_new_tokens ttft_ms=9.87 decode_tok_s=78.39
+  itl ms: med=7.846 mean=12.779 p99=13.984 max=1175.662
+  profiled steps=24 wall=8.551444625 ms/step kernel=7.237 ms/step busy=7.244 ms/step span=8.462 ms/step h2d=4.0 d2h=1.0 per step
+      2.256 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.631 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.054 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.037 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.172 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.099 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile SL (128/1024) ---
+COMMAND: profile_decode.py --label baseline-SL --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-SL.json --prompt-tokens 128 --max-new-tokens 1024 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-SL == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=128 new=1024 cache=32768 env={}
+tokens=1024 eos=max_new_tokens ttft_ms=10.01 decode_tok_s=102.29
+  itl ms: med=7.890 mean=9.780 p99=17.334 max=1212.006
+  profiled steps=24 wall=8.519813458333333 ms/step kernel=7.247 ms/step busy=7.255 ms/step span=8.426 ms/step h2d=3.9583333333333335 d2h=1.0 per step
+      2.257 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.633 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.057 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.038 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.172 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile MS (1024/64) ---
+COMMAND: profile_decode.py --label baseline-MS --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-MS.json --prompt-tokens 1024 --max-new-tokens 64 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-MS == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=1024 new=64 cache=32768 env={}
+tokens=64 eos=max_new_tokens ttft_ms=12.64 decode_tok_s=33.31
+  itl ms: med=8.683 mean=30.645 p99=533.316 max=1286.715
+  profiled steps=24 wall=11.950073416666665 ms/step kernel=7.380 ms/step busy=7.387 ms/step span=11.840 ms/step h2d=4.0 d2h=1.0 per step
+      2.260 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.655 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.156 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.047 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.610 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.174 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.105 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile MM (1024/256) ---
+COMMAND: profile_decode.py --label baseline-MM --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-MM.json --prompt-tokens 1024 --max-new-tokens 256 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-MM == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=1024 new=256 cache=32768 env={}
+tokens=256 eos=max_new_tokens ttft_ms=10.41 decode_tok_s=76.85
+  itl ms: med=7.903 mean=13.052 p99=14.168 max=1181.764
+  profiled steps=24 wall=8.79846275 ms/step kernel=7.369 ms/step busy=7.376 ms/step span=8.708 ms/step h2d=4.0 d2h=1.0 per step
+      2.256 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.655 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.154 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.041 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.174 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile ML (1024/1024) ---
+COMMAND: profile_decode.py --label baseline-ML --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-ML.json --prompt-tokens 1024 --max-new-tokens 1024 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-ML == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=1024 new=1024 cache=32768 env={}
+tokens=1024 eos=max_new_tokens ttft_ms=10.33 decode_tok_s=101.59
+  itl ms: med=7.977 mean=9.847 p99=15.530 max=1192.325
+  profiled steps=24 wall=8.601376541666665 ms/step kernel=7.374 ms/step busy=7.381 ms/step span=8.507 ms/step h2d=3.9583333333333335 d2h=1.0 per step
+      2.255 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.655 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.156 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.042 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.175 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile LS (4096/64) ---
+COMMAND: profile_decode.py --label baseline-LS --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-LS.json --prompt-tokens 4096 --max-new-tokens 64 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-LS == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=4096 new=64 cache=32768 env={}
+tokens=64 eos=max_new_tokens ttft_ms=10.80 decode_tok_s=35.21
+  itl ms: med=8.900 mean=29.041 p99=493.985 max=1213.961
+  profiled steps=24 wall=9.347485125 ms/step kernel=8.219 ms/step busy=8.218 ms/step span=9.257 ms/step h2d=4.0 d2h=1.0 per step
+      2.251 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.961 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.660 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.037 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.220 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile LM (4096/256) ---
+COMMAND: profile_decode.py --label baseline-LM --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-LM.json --prompt-tokens 4096 --max-new-tokens 256 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-LM == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=4096 new=256 cache=32768 env={}
+tokens=256 eos=max_new_tokens ttft_ms=10.73 decode_tok_s=69.18
+  itl ms: med=8.891 mean=14.500 p99=33.975 max=1202.325
+  profiled steps=24 wall=9.299949041666666 ms/step kernel=8.219 ms/step busy=8.218 ms/step span=9.209 ms/step h2d=4.0 d2h=1.0 per step
+      2.250 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.961 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.661 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.036 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.611 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.220 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+--- profile LL (4096/1024) ---
+COMMAND: profile_decode.py --label baseline-LL --json-out /workspace/exp/pradium/experiments/EXP-0000-baseline-freeze/results/profile_baseline-LL.json --prompt-tokens 4096 --max-new-tokens 1024 --profile-steps 24 --profile-after-tokens 8
+/workspace/envs/exllamav3/lib/python3.12/site-packages/torch/profiler/profiler.py:217: UserWarning: Warning: Profiler clears events at the end of each cycle.Only events from the current cycle will be reported.To keep events across cycles, set acc_events=True.
+  _warn_once(
+== baseline-LL == /workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py
+config: prompt=4096 new=1024 cache=32768 env={}
+tokens=1024 eos=max_new_tokens ttft_ms=10.70 decode_tok_s=96.08
+  itl ms: med=8.838 mean=10.411 p99=14.453 max=1190.549
+  profiled steps=24 wall=9.363844208333333 ms/step kernel=8.218 ms/step busy=8.217 ms/step span=9.268 ms/step h2d=3.9583333333333335 d2h=1.0 per step
+      2.253 ms/step x 1008  void exl3_mgemm_kernel<4, false, true, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      1.957 ms/step x 1008  _paged_attn_decode_split_kernel
+      1.660 ms/step x 2016  void exl3_gemv_int8_sq_kernel<4, 1, true, false, false>(__half const*, unsigned short const*, vo
+      1.037 ms/step x 1008  void exl3_mgemm_kernel<4, false, false, 2, 16, 32, 256, 4, 3>(__half const*, unsigned short cons
+      0.612 ms/step x   24  void exl3_gemm_kernel<6, false, false, 2, 16, 16, 512, 4, 3>(__half const*, unsigned short const
+      0.220 ms/step x 1008  _paged_attn_decode_combine_kernel
+      0.106 ms/step x 1008  void rms_norm_kernel<2, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.100 ms/step x 1008  void rope_kernel<2, false>(__half const*, __half*, __half const*, __half*, float const*, int, in
+      0.090 ms/step x 1032  void rms_norm_kernel<0, float, __half, __nv_bfloat16, float>(float const*, __nv_bfloat16 const*,
+      0.071 ms/step x 1008  void at::native::vectorized_elementwise_kernel<4, at::native::CUDAFunctor_add<float>, std::array
+      0.056 ms/step x 1008  _paged_kv_update_kernel
+      0.050 ms/step x 1008  void act_mul_kernel_f<0>(float const*, float const*, __half*, float, unsigned long)
+PROFILE_EXIT=0
+
+=== done ===
+Fri Oct  2 14:49:24 UTC 2026
