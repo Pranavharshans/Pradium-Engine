@@ -7,8 +7,17 @@ Status: RUNNING
 One materialized tree serves both experiments:
 `/workspace/exp/builds/cand-series-0001-0002`
 (upstream pin `d3739fd` + `patches/0001-cache-graph-replay-bindings.patch` +
-`patches/0002-direct-single-request-attention.patch`, built in place with
-`TORCH_CUDA_ARCH_LIST=8.6`).
+`patches/0002-direct-single-request-attention.patch`), built in place with
+`TORCH_CUDA_ARCH_LIST=8.6 MAX_JOBS=4 EXLLAMA_EXT_COMPRESS=0`.
+
+`EXLLAMA_EXT_COMPRESS` is the engine's own build knob (see
+`exllamav3/util/cuda_flags.py`): it controls whether kernel images are stored
+compressed in the cubin. It is a container/load-time property, not codegen, and
+it is the difference between 55 s and 17 s per heavy TU on this VM. The
+build-equivalence check for the whole candidate is the kernel-level profile
+comparison against the wheel in the EXP-0001 round (same config, direct
+attention OFF): identical kernel mix and per-kernel times mean the differing
+flag changed nothing that runs.
 
 Attribution method: patch 0002 is inert unless
 `EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS` makes `direct_attention_eligible()` true,
