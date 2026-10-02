@@ -26,11 +26,20 @@ case "$ROUND" in
     # patch series built; direct attention OFF -> isolates patch 0001
     EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=0 \
       run_round EXP-0001-patch-series EXP-0001-patch0001 "$TREE"
+    # one decode-step profile at SS: build-equivalence check against the wheel
+    OUT=$BASE/EXP-0001-patch-series/results/EXP-0001-patch0001 \
+    EXTRA_PYTHONPATH="$TREE" EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=0 \
+      "$BASE/EXP-0000-baseline-freeze/run_profile.sh" exllamav3 exp0001-SS \
+      --prompt-tokens 128 --max-new-tokens 64 --profile-steps 24
     ;;
   exp0002)
     # direct attention enabled for contexts <= 4096 tokens
     EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097 \
       run_round EXP-0002-direct-attention EXP-0002-direct "$TREE"
+    OUT=$BASE/EXP-0002-direct-attention/results/EXP-0002-direct \
+    EXTRA_PYTHONPATH="$TREE" EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097 \
+      "$BASE/EXP-0000-baseline-freeze/run_profile.sh" exllamav3 exp0002-SS \
+      --prompt-tokens 128 --max-new-tokens 64 --profile-steps 24
     ;;
   exp0003-on)
     EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097 EXL3_DECODE_BUFFER_REUSE=1 \
