@@ -59,7 +59,26 @@ M=1, not a dispatch choice.
 | EXP-0002 patch 0002 (direct attention) | pending | | | |
 | EXP-0003 patch 0003 (static buffers) | pending | | | |
 
-## 4. Closed hypotheses (measured, negative)
+## 4. Experiment history (commits, config, commands)
+
+| experiment | branch | candidate commit | evidence commit | verdict |
+|---|---|---|---|---|
+| EXP-0000 | `bench/exl3-runtime-b0-rtx3060` | tooling `04fa920` | `17c2c9e` | KEEP (evidence) |
+| EXP-0001 | same | build `cand-series-0001-0002` @ `86a5290` | (filled on completion) | pending |
+| EXP-0002 | same | + `EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=4097` | (filled) | pending |
+| EXP-0003 | same | + `patches/0003-static-decode-buffers.patch` | (filled) | pending |
+
+VM: RTX 3060 12 GB, driver 550.144.03, 4 vCPU (2 physical cores), 31 GB RAM,
+unprivileged container; engine environment `/workspace/envs/exllamav3`
+(Python 3.12, torch 2.10.0+cu128, triton 3.6.0); model
+`/workspace/models/minicpm5-2b-exl3` (frozen revision); harness
+`python -m benchmarks run matrix` with the campaign runtime config.
+
+Build: `/workspace/exp/builds/cand-series-0001-0002`, materialized by
+`engine/pradium/build.py` from the pin + patches 0001-0002, built in place with
+`TORCH_CUDA_ARCH_LIST=8.6 MAX_JOBS=4 EXLLAMA_EXT_COMPRESS=0`.
+
+## 5. Closed hypotheses (measured, negative)
 
 | hypothesis | result |
 |---|---|
