@@ -12,7 +12,8 @@ set -euo pipefail
 
 DEST=${1:?overlay dir}
 shift
-PATCHES=("$@")
+PATCHES=()
+for patch in "$@"; do PATCHES+=("$(realpath "$patch")"); done
 ENV_BIN=${ENV_BIN:-/workspace/envs/exllamav3}
 SP=$("$ENV_BIN/bin/python" -c "import sysconfig;print(sysconfig.get_paths()['purelib'])")
 
@@ -22,7 +23,7 @@ cp -a "$SP/exllamav3" "$DEST/"
 cd "$DEST"
 for patch in "${PATCHES[@]}"; do
   echo "applying $patch"
-  GIT_CEILING_DIRECTORIES="$(dirname "$DEST")" git apply "$(realpath "$patch")"
+  GIT_CEILING_DIRECTORIES="$(dirname "$DEST")" git apply "$patch"
 done
 "$ENV_BIN/bin/python" -c "
 import importlib.machinery, importlib.util, os, sys
