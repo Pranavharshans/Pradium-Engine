@@ -40,6 +40,33 @@ candidate tree and rebuilt incrementally before the round. This is exactly the
 kind of defect the series' own README warns about: it was never run on a GPU
 before this program.
 
+## Measured outcome (first round) and the gate refinement
+
+Paired SS decode-step profiles (same build, minutes apart, only the gate env
+var differs) show the mechanism working exactly as intended — the combine
+kernel disappears and the split kernel shrinks:
+
+| SS (192-token context) | direct OFF | direct ON |
+|---|---|---|
+| kernel ms/step | 7.239 | 6.846 |
+| split kernel | 1.055 | 0.865 |
+| combine kernel | 0.172 | absent |
+| ITL median | 7.84 ms | 7.49 ms |
+
+But the same paired ITL medians show the single-pass kernel scales badly with
+context length inside the coarse gate's range: SM 7.92 -> 8.09, SL 8.00 ->
+10.39, MS 8.03 -> 11.50, MM 8.04 -> 12.13, ML 8.09 -> 14.20 ms/step, while the
+long-context rows where the gate is already OFF are unchanged (LS 0.999x,
+LM 0.998x, LL 1.002x) — which also confirms the two rounds were measured under
+the same machine state. The coarse gate (padded table width, minimum 16 pages)
+cannot separate a 192-token context from a 2048-token one, so it applies the
+single-pass path where it loses.
+
+`patches/0005-direct-attention-live-length-gate.patch` (Python only) makes the
+env bound a precise *live-token* bound, read from the generator's pinned host
+`cache_seqlens` staging buffer (no GPU readback), falling back to the padded
+bound when unavailable. Measured with a 512-token bound afterwards.
+
 ## Evidence
 
 `results/EXP-0002-direct/` (matrix + profiles + correctness) and

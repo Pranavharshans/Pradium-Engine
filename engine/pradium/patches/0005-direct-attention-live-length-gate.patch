@@ -1,0 +1,64 @@
+diff --git a/exllamav3/modules/attention_fn/pradium_policy.py b/exllamav3/modules/attention_fn/pradium_policy.py
+--- a/exllamav3/modules/attention_fn/pradium_policy.py	2026-10-02 17:56:02
++++ b/exllamav3/modules/attention_fn/pradium_policy.py	2026-10-02 21:42:37
+@@ -1,9 +1,15 @@
+ """CPU-only selection policy for the experimental direct attention graph."""
+ def direct_attention_eligible(*, enabled_limit, bsz, q_len, table_pages,
+-                              page_size, head_dim, v_head_dim, qsa):
+-    # Use the table capacity, not a CPU readback of live GPU lengths. The extra
+-    # query accounts for cache append. Regime 2 has its own graph, so crossing
+-    # this boundary safely switches back to the existing split/combine graph.
+-    return (enabled_limit > 0 and bsz == 1 and q_len == 1 and not qsa
+-            and head_dim == v_head_dim and table_pages > 0
+-            and table_pages * page_size + q_len <= enabled_limit)
++                              page_size, head_dim, v_head_dim, qsa,
++                              live_tokens = None):
++    # Regime 2 has its own graph, so crossing the bound safely switches back to
++    # the existing split/combine graph. Prefer the precise live context length:
++    # the generator's cache_seqlens staging buffer is pinned host memory, so the
++    # value is available without a GPU-to-CPU readback. Fall back to the padded
++    # block-table bound (an upper bound on the live length) when unavailable.
++    if not (enabled_limit > 0 and bsz == 1 and q_len == 1 and not qsa
++            and head_dim == v_head_dim and table_pages > 0):
++        return False
++    if live_tokens is not None:
++        return live_tokens <= enabled_limit
++    return table_pages * page_size + q_len <= enabled_limit
+diff --git a/exllamav3/modules/attention_fn/bc_attn.py b/exllamav3/modules/attention_fn/bc_attn.py
+--- a/exllamav3/modules/attention_fn/bc_attn.py	2026-10-02 21:42:44
++++ b/exllamav3/modules/attention_fn/bc_attn.py	2026-10-02 21:42:37
+@@ -610,6 +610,7 @@
+             bsz = bsz, q_len = q_len, table_pages = block_table.shape[1],
+             page_size = PAGE_SIZE, head_dim = self.head_dim,
+             v_head_dim = self.v_head_dim, qsa = self.qsa,
++            live_tokens = (int(host_seqlens[0]) + q_len) if host_seqlens is not None else None,
+         ):
+             regime = 2
+ 
+diff --git a/exllamav3/modules/attn.py b/exllamav3/modules/attn.py
+--- a/exllamav3/modules/attn.py	2026-10-02 21:42:44
++++ b/exllamav3/modules/attn.py	2026-10-02 21:42:37
+@@ -1094,6 +1094,13 @@
+             cache = self.tp_cache_lookup[cache]
+         block_table = get_for_device(params, "block_table", self.device)
+         cache_seqlens = get_for_device(params, "cache_seqlens", self.device)
++        # Pinned host staging copy of the cache lengths: the generator fills it before the
++        # forward, so the live context length is available without a GPU readback and can
++        # drive the direct-attention gate precisely (see bc_attn.step)
++        cache_seqlens_host = params.get("cache_seqlens")
++        if cache_seqlens_host is not None and getattr(cache_seqlens_host, "device", None) is not None \
++                and cache_seqlens_host.device.type != "cpu":
++            cache_seqlens_host = None
+         position = params.get("position", 0)
+         positions = get_for_device(params, "positions", self.device, None)
+         position_ids = get_for_device(params, "position_ids", self.device, None)
+@@ -1124,7 +1131,8 @@
+             bsz <= _bc_max_bsz and seqlen <= _bc_max_qlen
+         ):
+             o = self.bc_attn_step(x, cache, params, block_table, cache_seqlens,
+-                                  host_seqlens = qsa_seqlens_cpu, out = out)
++                                  host_seqlens = qsa_seqlens_cpu if qsa_seqlens_cpu is not None
++                                  else cache_seqlens_host, out = out)
+             if o is not None:
+                 return o
+ 
