@@ -24,10 +24,10 @@ run_round() {
 case "$ROUND" in
   exp0001)
     # patch series built; direct attention OFF -> isolates patch 0001.
-    # Patch 0001 only removes host bookkeeping inside an existing graph-replay path,
-    # so the round uses SS/MM/LL (documented) plus the SS step profile; the full
-    # nine-workload scope is used for EXP-0002 and EXP-0003.
-    PROFILES=SS,MM,LL EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=0 \
+    # All rounds use the full nine core workloads; PROFILES is exported because a
+    # bare `VAR=x func` assignment is not visible to the child process.
+    export PROFILES="${PROFILES:-SS,SM,SL,MS,MM,ML,LS,LM,LL}"
+    EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS=0 \
       run_round EXP-0001-patch-series EXP-0001-patch0001 "$TREE"
     # one decode-step profile at SS: build-equivalence check against the wheel
     OUT=$BASE/EXP-0001-patch-series/results/EXP-0001-patch0001 \
