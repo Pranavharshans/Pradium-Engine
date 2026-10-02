@@ -51,6 +51,21 @@ Acceptance: greedy token IDs identical to the accepted parent on the core
 matrix, no core workload regressed, decode medians improved on the workloads
 where the gate applies.
 
+## Predeclared decision criteria
+
+- Correctness: greedy token IDs identical to the frozen official session for
+  every matched (profile, run) pair, or a recorded, explained divergence with
+  evidence that it is float-reduction noise (for EXP-0002: the direct-vs-split
+  differential on logits, `tools/attn_path_compare.py`).
+- Improvement counts only if the geomean of the nine per-workload decode
+  medians improves by more than the observed baseline reproducibility band
+  (frozen vs re-verified baseline: -2.5%..+2.4%, geomean +0.2%).
+- Any workload whose median drops below its parent's median by more than 5%
+  is a regression that rejects the experiment unless the drop is explained by
+  a measurement artefact reproduced under the same conditions.
+- Medians come from the frozen protocol (3 warmups + 10 measured runs per
+  workload); no run is dropped.
+
 ## Commands
 
 ```sh
