@@ -39,7 +39,11 @@ LOG=$OUT/round.log
   echo "SESSION=$SESSION"
 
   echo; echo "--- decode profiles ---"
+  if [ "${SKIP_PROFILES:-0}" = "1" ]; then
+    echo "SKIP_PROFILES=1: matrix-only round (decision metric); profiles run separately"
+  fi
   while read -r name pin pout; do
+    [ "${SKIP_PROFILES:-0}" = "1" ] && break
     [ -z "$name" ] && continue
     echo; echo "--- profile $name (${pin}/${pout}) ---"
     EXTRA_PYTHONPATH="$PYPREFIX" OUT="$OUT" \
