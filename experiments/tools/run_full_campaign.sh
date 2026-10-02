@@ -4,9 +4,9 @@
 #   1. EXP-0001  candidate tree, direct attention OFF   (isolates patch 0001)
 #   2. EXP-0002  direct attention ON (gate 4097)        (patch 0002 on top)
 #   3. direct-vs-split numeric differential (3 prompt lengths)
-#   4. apply patch 0003 to the tree (Python only, no rebuild) and run
-#      4a. EXL3_DECODE_BUFFER_REUSE=0   (control)
-#      4b. EXL3_DECODE_BUFFER_REUSE=1   (patch 0003, Python-buffer reuse)
+#   4. apply patch 0003 to the tree (Python only, no rebuild) and run it with
+#      EXL3_DECODE_BUFFER_REUSE=1 (patch 0003 on top of EXP-0002). EXP-0002 is
+#      its parent, so the incremental effect is the same-build difference.
 #   5. print the cross-round summary
 #
 # Every round writes into experiments/<EXP>/results/<tag>/ (committed evidence).
@@ -33,14 +33,12 @@ TOOLS=$R/experiments/tools
     git apply "$R/engine/pradium/patches/0003-static-decode-buffers.patch" \
     && echo "patch 0003 applied" || echo "patch 0003 FAILED to apply"
 
-  bash "$TOOLS/run_rounds.sh" exp0003-off "$TREE"
   bash "$TOOLS/run_rounds.sh" exp0003-on "$TREE"
 
   echo; echo "=== cross-round summary ==="
   python "$TOOLS/summarize_rounds.py" \
     "exp0001=$R/experiments/EXP-0001-patch-series/results/EXP-0001-patch0001/session" \
     "exp0002=$R/experiments/EXP-0002-direct-attention/results/EXP-0002-direct/session" \
-    "exp0003-off=$R/experiments/EXP-0003-static-buffers/results/EXP-0003-buffers-off/session" \
     "exp0003-on=$R/experiments/EXP-0003-static-buffers/results/EXP-0003-buffers-on/session"
   echo "=== full campaign done ==="; date -u
 } > "$LOG" 2>&1
