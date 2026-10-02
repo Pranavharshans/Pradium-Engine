@@ -35,12 +35,13 @@
     }
   },
   "notes_for_the_future_re_run": {
+    "model_support_is_undetermined_not_disproven": "The campaign does NOT record UNSUPPORTED_MODEL for vLLM. No dense-Llama integration is declared at this revision (its model-side integrations are GLM-5.3-Flash via src/glm53_exl3_plugin, DeepSeek-V4/V4.1 via src/vllm_exl3/deepseek_v41.py, and Qwen4Exp; the only architecture-specific branch is DEEPSEEK_V41_ARCH), and its README states the primary qualification target is one GB10 (sm_121 Blackwell), TP=1, GLM-5.3-Flash. Against that, the plugin does register a generic EXL3 quantization method that is architecturally agnostic in the ways that matter for this checkpoint: @register_quantization_config(\"exl3\") with get_name() == \"exl3\", get_config_filenames() == [\"quantization_config.json\"] (exactly the file this checkpoint ships), get_min_capability() == 80 with the comment 'LinearEXL3 uses CUDA >= Ampere; GB10 is SM121', and dense 'declared EXL3 tensors' served through exllamav3_ext. MiniCPM5 is a dense LlamaForCausalLM whose dense linears carry the standard EXL3 tensor group, so a working dense path is plausible. It could not be tested here, so support remains an open gate rather than a recorded negative.",
     "architecture_is_not_the_expected_blocker": "The checkpoint declares architectures: [\"LlamaForCausalLM\"] / model_type: llama, which vLLM supports natively. The gate to test is therefore whether vllm-exl3 loads this checkpoint's packed EXL3 tensor group and executes an Ampere-correct (sm_86) kernel path.",
-    "no_blackwell_paths": "The campaign explicitly forbids activating sm_100/sm_120/Blackwell-only kernels on this Ampere GPU. Since the stack could not be installed, no kernel path was exercised at all.",
+    "no_blackwell_paths": "The campaign explicitly forbids activating sm_100/sm_120/Blackwell-only kernels on this Ampere GPU, and this plugin's native kernel suite is qualified on GB10 (sm_121). Since the stack could not be installed, no kernel path was exercised at all. On a re-run, an sm_86 route must be selected explicitly and the GB10-only paths must stay off.",
     "gate_to_verify_when_runnable": [
       "vLLM recognizes the architecture",
       "plugin registration of --quantization exl3 succeeds",
-      "EXL3 quantization config loads",
+      "EXL3 quantization config loads from quantization_config.json",
       "packed tensors load with no missing keys",
       "no unexpected random initialization",
       "embeddings and lm_head work",
