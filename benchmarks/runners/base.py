@@ -114,12 +114,17 @@ def execute_request(
     gate: threading.Event | None = None,
     concurrency: int = 1,
     batch_size: int = 1,
+    persist_raw: bool = True,
 ) -> RawResult:
     """Execute one request end to end and persist its raw record.
 
     Captures: submission timestamp (after any start barrier), per-token arrival
     timestamps, runtime-reported prefill/queue/scheduler metrics, correctness
     data, telemetry over the request window, and the full token timing trace.
+
+    ``persist_raw=False`` defers appending to ``raw.jsonl`` so concurrent-group
+    aggregates can be attached first (traces and failures are always persisted
+    immediately).
     """
     if gate is not None:
         gate.wait()
@@ -304,7 +309,8 @@ def execute_request(
     )
 
     # --- persist immediately (raw data is sacred) ---
-    ctx.session.append_raw(record)
+    if persist_raw:
+        ctx.session.append_raw(record)
     if events:
         trace = TokenTrace(
             request_id=request.request_id,
@@ -356,13 +362,16 @@ def run_group(
     concurrency = concurrency or len(requests)
     results: list[RawResult] = []
     if len(requests) == 1:
-        record = execute_request(ctx, requests[0], gate=None, concurrency=concurrency)
+        record = execute_request(
+            ctx, requests[0], gate=None, concurrency=concurrency, persist_raw=False
+        )
         results.append(record)
         wall_ns = 0
         if record.request_submitted_ns is not None and record.last_token_ns is not None:
             wall_ns = record.last_token_ns - record.request_submitted_ns
         aggregates = _group_aggregates(ctx, results, wall_ns)
         _fill_aggregates(results, aggregates)
+        _persist_group(ctx, results)
         return results, aggregates
 
     gate = threading.Event()
@@ -371,7 +380,12 @@ def run_group(
 
     def worker(request: BenchmarkRequest) -> None:
         record = execute_request(
-            ctx, request, gate=gate, concurrency=concurrency, batch_size=request.batch_size
+            ctx,
+            request,
+            gate=gate,
+            concurrency=concurrency,
+            batch_size=request.batch_size,
+            persist_raw=False,
         )
         with results_lock:
             results.append(record)
@@ -390,7 +404,14 @@ def run_group(
 
     aggregates = _group_aggregates(ctx, results, wall_ns)
     _fill_aggregates(results, aggregates)
+    _persist_group(ctx, results)
     return results, aggregates
+
+
+def _persist_group(ctx: RunnerContext, results: list[RawResult]) -> None:
+    """Persist group records after aggregates are attached."""
+    for record in results:
+        ctx.session.append_raw(record)
 
 
 def _fill_aggregates(results: list[RawResult], aggregates: dict[str, Any]) -> None:

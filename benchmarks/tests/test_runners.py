@@ -214,6 +214,22 @@ class TestConcurrency(unittest.TestCase):
         per_request_sum_s = sum(r.e2e_ms for r in results) / 1000.0
         self.assertLess(wall_s, per_request_sum_s)
 
+    def test_group_aggregates_persisted_in_raw_jsonl(self) -> None:
+        import json
+        from pathlib import Path
+
+        runtime = MockRuntime(MockRuntimeConfig(time_scale=0.05, decode_tok_s=200.0))
+        ctx = make_ctx(self.tmp, runtime)
+        requests = [make_request(16, 6) for _ in range(2)]
+        run_group(ctx, requests, concurrency=2)
+        lines = Path(ctx.session.raw_path).read_text().strip().splitlines()
+        self.assertEqual(len(lines), 2)
+        for line in lines:
+            payload = json.loads(line)
+            self.assertIsNotNone(payload["aggregate_output_tok_s"])
+            self.assertIsNotNone(payload["aggregate_decode_tok_s"])
+            self.assertIsNotNone(payload["wall_clock_ms"])
+
     def test_barrier_thread_mechanics(self) -> None:
         runtime = MockRuntime(MockRuntimeConfig(time_scale=0.5, decode_tok_s=200.0))
         ctx = make_ctx(self.tmp, runtime)
