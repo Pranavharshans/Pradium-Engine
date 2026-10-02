@@ -19,3 +19,9 @@ python -m benchmarks run matrix --runtime mock --quick
 See [`benchmarks/README.md`](benchmarks/README.md) for the full documentation:
 workload matrix, metric formulas, suites, result format, and how to add a
 runtime adapter.
+
+## Upstream inference engines
+
+`engine/exllamav3/` contains the official ExLlamaV3 engine as a pinned Git
+submodule. See [`engine/README.md`](engine/README.md) for the upstream source
+and clone instructions.
