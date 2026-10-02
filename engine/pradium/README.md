@@ -2,7 +2,38 @@
 
 Goal: 2x single-request decode throughput over the pinned ExLlamaV3 baseline,
 with matching weights, precision, cache conditions, and output quality.
-**No speedup or GPU correctness has been demonstrated for these changes yet.**
+
+## Measured status (RTX 3060 12 GB, MiniCPM5-2B EXL3, batch 1, 2026-10-02)
+
+Nine core workloads (SS..LL), medians of 10 measured runs after 3 warmups under
+the frozen harness configuration, on the authorized VM. Raw records, paired
+step-time profiles, correctness diffs and per-experiment verdicts:
+`experiments/` (ledger: `experiments/LEDGER.md`).
+
+| patch | verdict | measured effect |
+|---|---|---|
+| 0001 graph replay argument bindings | KEEP | no regression, no measurable change (host bookkeeping only); the build reproduces the frozen session's greedy tokens exactly, 117/117 |
+| 0002 direct single-request attention | REJECT as configured | wins at 192-token contexts (step 7.84 -> 7.49 ms, combine kernel eliminated, kernel total 7.239 -> 6.846 ms) but loses 2-76% of the step at 384-2048 tokens; the padded-width gate cannot separate those cases |
+| 0003 static decode buffers | REJECT | within +-1% of its parent on every workload's steady-state step time |
+| 0004 combine kernel optional for regime 2 | KEEP (prerequisite) | without it every direct-regime call raises in `configure` |
+| 0005 precise live-token gate for the direct regime | REJECT (correctness) | removes every coarse-gate loss and keeps the SS gain, but still flips a greedy token in SM (13/13 runs, first divergence at token 73) |
+
+**No 2x, and no accepted net speedup.** The measured ceiling explains it: a
+decoded token reads 1.19 GB of EXL3 weights (991 MB in the 294 layer linears
+at 4.01 bpw, 191 MB in the 6-bit LM head) and the VM's measured peak read
+bandwidth is ~330 GB/s, so the pure weight-read floor is 3.6 ms/token against
+the baseline's 8.9 ms at SS. A 2.00x step (4.45 ms) would have to fit
+attention, activations, sampling, host work and sync into 0.85 ms. The
+remaining gap to the floor is EXL3 kernel efficiency at the M=1 layer shapes
+(199-250 GB/s vs the 321 GB/s the same format reaches in the LM head), which
+the forced-shape sweep shows is not recoverable by dispatch.
+
+Reproduction: `experiments/EXP-0000-baseline-freeze/README.md` (baseline and
+profiling), `experiments/EXP-0001-patch-series/README.md` (build + rounds),
+`experiments/tools/run_full_campaign.sh` (unattended measurement).
+
+The previous text of this section — "No speedup or GPU correctness has been
+demonstrated for these changes yet" — is superseded by the table above.
 
 The official source stays in `../exllamav3`, pinned to
 `d3739fd393337b1ff4d6c2a342b12f0c87a9592f`. Our changes are a versioned patch
