@@ -1,0 +1,14 @@
+diff --git a/exllamav3/exllamav3_ext/libtorch/attention.cpp b/exllamav3/exllamav3_ext/libtorch/attention.cpp
+--- a/exllamav3/exllamav3_ext/libtorch/attention.cpp	2026-10-02 17:56:02
++++ b/exllamav3/exllamav3_ext/libtorch/attention.cpp	2026-10-02 19:37:33
+@@ -257,7 +257,9 @@
+ 
+     TORCH_CHECK(s.q.is_contiguous() && s.kv.is_contiguous() && s.o.is_contiguous(), "BC_Attention: statics must be contiguous");
+     TORCH_CHECK(quant_cache == (k_update == nullptr), "BC_Attention: k_update iff fp16 cache");
+-    TORCH_CHECK(k_combine, "BC_Attention: combine kernel required");
++    // Regime 2 (direct single-request attention) intentionally has no combine kernel: the
++    // split kernel writes the final output directly
++    TORCH_CHECK(k_combine || regime == 2, "BC_Attention: combine kernel required");
+ 
+     s.q2 = s.q.view({R, num_q_heads * head_dim});
+     s.q4 = s.q.view({bsz, q_len, num_q_heads, head_dim});

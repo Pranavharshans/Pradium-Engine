@@ -29,6 +29,17 @@ partials + combine). The expected difference is float-reduction noise, which
 `tools/attn_path_compare.py` measures per prompt length (logit deltas and
 argmax agreement) in the same process.
 
+## Defect found by inspection before measurement (fixed as patch 0004)
+
+`BC_Attention::configure` required a combine kernel unconditionally
+(`TORCH_CHECK(k_combine, ...)`), while regime 2 is selected by passing
+`k_combine = None`. Any direct-regime call would therefore have raised during
+configuration. The check is now `k_combine || regime == 2`
+(`patches/0004-direct-attention-combine-optional.patch`), applied to the
+candidate tree and rebuilt incrementally before the round. This is exactly the
+kind of defect the series' own README warns about: it was never run on a GPU
+before this program.
+
 ## Evidence
 
 `results/EXP-0002-direct/` (matrix + profiles + correctness) and
