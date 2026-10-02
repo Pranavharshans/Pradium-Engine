@@ -14,12 +14,12 @@ ENV_BIN=${ENV_BIN:-/workspace/envs/exllamav3}
 
 mkdir -p "$(dirname "$DEST")"
 cd "$REPO"
+source "$ENV_BIN/bin/activate"
 
 if [ ! -f "$DEST/PRADIUM_BUILD.json" ]; then
   python engine/pradium/build.py --output "$DEST"
 fi
 
-source "$ENV_BIN/bin/activate"
 export TORCH_CUDA_ARCH_LIST="${TORCH_CUDA_ARCH_LIST:-8.6}"
 export MAX_JOBS="${MAX_JOBS:-3}"
 
