@@ -42,17 +42,28 @@ Headline result on the one supported runtime (medians of 10 measured runs):
 
 | Workload | TTFT | prefill tok/s | decode tok/s | TPOT | peak VRAM |
 |---|---|---|---|---|---|
-| SS 128→64 | 69.56 ms | 2106 | 109.89 | 9.12 ms | 2799 MB |
-| MM 1024→256 | 237.44 ms | 4513 | 102.27 | 9.97 ms | 2951 MB |
-| LL 4096→1024 | 875.31 ms | 4739 | 79.19 | 13.30 ms | 3031 MB |
+| SS 128→64 | 69.53 ms | 2104 | 109.80 | 9.11 ms | 2799 MB |
+| MM 1024→256 | 237.13 ms | 4509 | 101.31 | 9.87 ms | 2951 MB |
+| LL 4096→1024 | 875.30 ms | 4738 | 77.19 | 12.96 ms | 3031 MB |
 
-The decisive structural finding for Pradium: on this 2-core host, decode is
-**97–112 tok/s** and is essentially flat from 128 to 2048 input tokens, degrading
-to **~72 tok/s at 16 K** context; prefill throughput *rises* with prompt length
-(2100 → 4700 tok/s) because short prompts are launch/overhead dominated. The
-model is tiny (1.14 GB of weights in 1.6 GB of VRAM), so on a 12 GB card the GPU
-is never the binding constraint — **per-request latency and single-request decode
-bandwidth are**, which is where Pradium's optimization attention belongs.
+The decisive structural findings for Pradium:
+
+* **Decode is 97–112 tok/s and essentially flat to 2 K of context, falling to
+  58.8 tok/s at 32 K** — and the fall is *tail*, not typical: the ITL median stays
+  within 7.89–8.98 ms across all nine official workloads while ITL p99 moves
+  20.69 → 69.09 ms.
+* **The GPU is not the constraint until 32 K.** Up to 16 K the board sits at
+  60–92 % utilisation and 97–158 W of a 170 W limit with ≤3 GB of 12 GB VRAM in
+  use; only at 32 K does it reach 97.8 % and 165.6 W.
+* **The 2-core host is the limiter for concurrency**: at C8 on short prompts the
+  GPU drops to 44.9 % utilisation and 65.8 W while aggregate throughput reaches
+  only 4.37× of C1.
+* **One long prefill freezes every concurrent stream**: resident inter-token
+  latency goes 14.62 → 329.95 ms with a 499.69 ms worst-case stall.
+
+Trustworthiness and reproducibility were treated as more important than producing
+a full grid: where a stack could not genuinely run the exact checkpoint, that is
+recorded as a result rather than engineered around.
 
 ## 2. RTX 3060 environment (verified, not assumed)
 
@@ -252,20 +263,25 @@ Official mode, 3 warmups + 10 measured runs, medians. All 117 records:
 
 | Workload | in→out | TTFT ms | prefill ms | prefill tok/s | decode ms | decode tok/s | TPOT ms (=ITL mean) | ITL med | ITL p95 | ITL p99 | ITL max | E2E ms | peak VRAM MB | RAM MB | CPU % | GPU util % | power W | temp °C |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| SS | 128→64 | 69.53 | 60.84 | 2106 | 573.23 | 109.89 | 9.11 | 7.89 | 18.11 | 20.69 | 21.46 | 645.87 | 2799 | 1721 | 171.60 | 73.33 | 116.86 | 50 |
-| SM | 128→256 | 69.01 | 60.44 | 2118 | 2983.21 | 88.55 | 11.70 | 7.94 | 26.33 | 69.99 | 81.46 | 3164.16 | 2799 | 1725 | 162.24 | 64.71 | 113.30 | 58 |
-| SL | 128→1024 | 69.88 | 60.92 | 2101 | 10606.34 | 96.85 | 10.37 | 7.98 | 21.46 | 50.16 | 77.98 | 10721.96 | 2799 | 1728 | 170.14 | 71.31 | 123.84 | 67 |
-| MS | 1024→64 | 236.34 | 226.73 | 4517 | 576.12 | 110.51 | 9.14 | 8.00 | 18.80 | 21.23 | 21.48 | 817.85 | 2951 | 1969 | 157.38 | 78.50 | 136.39 | 65 |
-| MM | 1024→256 | 237.13 | 227.10 | 4513 | 2476.86 | 102.27 | 9.87 | 8.01 | 20.52 | 30.96 | 47.77 | 2777.56 | 2951 | 1972 | 167.41 | 77.22 | 124.15 | 67 |
-| ML | 1024→1024 | 237.49 | 227.11 | 4509 | 11765.42 | 97.35 | 11.50 | 8.11 | 27.99 | 58.61 | 87.23 | 13259.04 | 2951 | 1984 | 169.53 | 72.61 | 127.16 | 68 |
-| LS | 4096→64 | 880.25 | 868.91 | 4717 | 631.20 | 100.11 | 10.02 | 8.88 | 19.11 | 22.88 | 23.87 | 1513.18 | 3031 | 2002 | 136.58 | 88.27 | 152.16 | 69 |
-| LM | 4096→256 | 878.99 | 868.70 | 4715 | 2888.27 | 98.75 | 11.33 | 8.91 | 22.64 | 37.02 | 41.14 | 4072.27 | 3031 | 2002 | 157.89 | 83.53 | 136.83 | 70 |
-| LL | 4096→1024 | 875.30 | 864.25 | 4739 | 12891.11 | 79.19 | 12.96 | 8.98 | 29.01 | 69.09 | 98.99 | 14481.06 | 3031 | 2005 | 161.80 | 69.19 | 123.72 | 68 |
+| SS | 128→64 | 69.53 | 60.84 | 2104 | 573.23 | 109.80 | 9.11 | 7.89 | 18.11 | 20.69 | 21.46 | 644.73 | 2799 | 1721 | 171.60 | 73.17 | 116.27 | 50 |
+| SM | 128→256 | 69.01 | 60.44 | 2118 | 2983.21 | 85.58 | 11.70 | 7.94 | 26.33 | 69.99 | 81.46 | 3056.44 | 2799 | 1725 | 162.24 | 59.87 | 111.14 | 58 |
+| SL | 128→1024 | 69.88 | 60.92 | 2101 | 10606.34 | 96.45 | 10.37 | 7.98 | 21.46 | 50.16 | 77.98 | 10676.98 | 2799 | 1728 | 170.14 | 71.07 | 123.54 | 67 |
+| MS | 1024→64 | 236.34 | 226.73 | 4516 | 576.12 | 109.36 | 9.14 | 8.00 | 18.80 | 21.23 | 21.48 | 811.57 | 2951 | 1969 | 157.38 | 78.38 | 136.37 | 65 |
+| MM | 1024→256 | 237.13 | 227.10 | 4509 | 2476.86 | 101.31 | 9.87 | 8.01 | 20.52 | 30.96 | 47.77 | 2754.25 | 2951 | 1972 | 167.41 | 76.17 | 120.48 | 67 |
+| ML | 1024→1024 | 237.49 | 227.11 | 4509 | 11765.42 | 87.95 | 11.50 | 8.11 | 27.99 | 58.61 | 87.23 | 12002.67 | 2951 | 1984 | 169.53 | 66.08 | 119.81 | 68 |
+| LS | 4096→64 | 880.25 | 868.91 | 4714 | 631.20 | 99.81 | 10.02 | 8.88 | 19.11 | 22.88 | 23.87 | 1511.31 | 3031 | 2002 | 136.58 | 88.17 | 152.10 | 69 |
+| LM | 4096→256 | 878.99 | 868.70 | 4715 | 2888.27 | 89.29 | 11.33 | 8.91 | 22.64 | 37.02 | 41.14 | 3767.44 | 3031 | 2002 | 157.89 | 78.76 | 135.54 | 70 |
+| LL | 4096→1024 | 875.30 | 864.25 | 4738 | 12891.11 | 77.19 | 12.96 | 8.98 | 29.01 | 69.09 | 98.99 | 14136.55 | 3031 | 2005 | 161.80 | 67.15 | 120.66 | 68 |
 
 All nine workloads produced exactly the requested output token count
 (`finish_reason = max_new_tokens` in every measured run), and every run was
 `correctness_status: PASS`. Every value above is a median over 10 measured runs
 in session `20261002-090349_exllamav3_official_537aee`; warmups are excluded.
+Prefill ms and RAM are medians of the same runs; `prefill_tok_s` and
+`prefill_ms` are runtime-reported, everything else is externally measured or
+derived by the harness (see the provenance note beneath §7's tables in
+[`derived-tables.md`](../campaigns/rtx3060-minicpm5-exl3-b0/exllamav3/derived-tables.md),
+which is generated directly from the committed records).
 
 ## 8. TTFT
 
@@ -470,21 +486,221 @@ Official session `20261002-095216_exllamav3_official_c72190`: 8 lengths ×
 (3 warmups + 10 measured). **7 of 8 points are valid** (all `performance_valid`,
 all correctness PASS). `CTX-32768` is FAILED — see §23.
 
-| input tokens | 128 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768 |
+| input tokens | 128 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768 † |
 |---|---|---|---|---|---|---|---|---|
-| TTFT ms | 68.81 | 132.23 | 237.53 | 414.28 | 877.54 | 2021.67 | 4930.08 | FAILED |
-| prefill ms | 60.26 | 123.05 | 227.89 | 403.96 | 866.80 | 2009.60 | 4915.39 | — |
-| prefill tok/s | 2124 | 4161 | 4494 | 5070 | 4725 | 4076 | 3333 | — |
-| decode tok/s | 101.0 | 103.5 | 103.0 | 101.0 | 88.1 | 87.7 | 71.7 | — |
-| peak VRAM MB | 2799 | 2911 | 2951 | 3031 | 3031 | 3031 | 3031 | — |
-| GPU util % | 73.0 | 75.7 | 76.1 | 77.9 | 75.4 | 88.1 | 92.1 | — |
-| power W | 118.8 | 125.6 | 130.1 | 136.8 | 127.6 | 149.7 | 157.6 | — |
-| temp °C | 57 | 63.5 | 67 | 69 | 69 | 70.5 | 73 | — |
+| TTFT ms | 68.81 | 132.23 | 237.53 | 414.28 | 877.54 | 2021.67 | 4930.08 | 13445.14 † |
+| prefill ms | 60.26 | 123.05 | 227.89 | 403.96 | 866.80 | 2009.60 | 4915.39 | 13417.58 † |
+| prefill tok/s | 2124 | 4161 | 4494 | 5070 | 4725 | 4076 | 3333 | 2442 † |
+| decode tok/s | 101.0 | 103.5 | 103.0 | 101.0 | 88.1 | 87.7 | 71.7 | 58.8 † |
+| peak VRAM MB | 2799 | 2911 | 2951 | 3031 | 3031 | 3031 | 3031 | 3659 † |
+| GPU util % | 73.0 | 75.7 | 76.1 | 77.9 | 75.4 | 88.1 | 92.1 | **97.8 †** |
+| power W | 118.8 | 125.6 | 130.1 | 136.8 | 127.6 | 149.7 | 157.6 | **165.6 †** |
+| temp °C | 57 | 63.5 | 67 | 69 | 69 | 70.5 | 73 | 74.5 † |
+
+† The 32768 point does not fit the official 32768-token KV pool (it needs 130
+pages of 128), so it comes from the **labelled supplementary run** at a
+49152-token pool — see §25. It is a different runtime configuration and is marked
+as such everywhere it appears; the official row is the FAILED one preserved in
+§23. It is not mixed into the official medians.
 
 TTFT scales worse than linearly beyond ~4 K (4096 → 16384 is 4× the tokens for
-5.6× the TTFT), decode decays ~30 % by 16 K, and VRAM saturates at 3031 MB from
-2048 tokens onward because the full 32 K KV pool is allocated up front rather
-than on demand. Failed points are never interpolated in the plot data.
+5.6× the TTFT; 16384 → 32768 is 2× the tokens for 2.7× the TTFT), and decode
+decays from ~101 tok/s at ≤2 K to **58.8 tok/s at 32 K**. VRAM saturates at
+3031 MB from 2048 tokens onward under the official pool because the full 32 K KV
+pool is allocated up front rather than on demand.
+
+**The 32 K point is also the only one where the GPU becomes the constraint**: GPU
+utilisation reaches **97.8 %** and board power **165.6 W** against a 170 W limit,
+versus 60–92 % and 97–158 W everywhere else. Up to 16 K this workload is
+host-limited; at 32 K it finally saturates the SM. Failed points are never
+interpolated in the plot data.
+
+### 19. Prefix / KV reuse
+
+Session `20261002-110241_exllamav3_official_7cf380`. Frozen methodology:
+1024-token inputs, 256-token outputs, 4 requests per ratio, scenarios
+`same_session`, `cross_request` and `cross_session`, 10 measured runs per cell,
+shared prefix defined on token IDs. Every prime is a full cold prefill (the
+adapter's `clear_prefix_cache()` runs before each request), so the measured
+request can only reuse what the prime actually deposited.
+
+| reuse | scenario | TTFT ms | prefill ms | prefill tok/s | decode tok/s | E2E ms |
+|---|---|---|---|---|---|---|
+| 0 % | same_session | 237.8 | 228.3 | 4486 | 97.8 | 2845.3 |
+| 0 % | cross_request | 237.6 | 227.9 | 4492 | 98.5 | 2827.2 |
+| 0 % | cross_session | 237.6 | 228.0 | 4492 | 102.3 | 2735.0 |
+| 25 % | same_session | 189.3 | 179.7 | 5699 | 104.3 | 2633.3 |
+| 25 % | cross_request | 189.2 | 179.7 | 5698 | 99.2 | 2758.6 |
+| 25 % | **cross_session** | **238.3** | **228.8** | **4475** | 102.3 | 2730.2 |
+| 50 % | same_session | 138.1 | 128.7 | 7958 | 102.8 | 2617.3 |
+| 50 % | cross_request | 138.3 | 128.8 | 7949 | 101.1 | 2660.2 |
+| 50 % | **cross_session** | **238.0** | **228.3** | **4486** | 102.5 | 2725.9 |
+| 75 % | same_session | 93.1 | 83.7 | 12228 | 102.2 | 2587.9 |
+| 75 % | cross_request | 93.1 | 83.8 | 12216 | 97.0 | 2721.5 |
+| 75 % | **cross_session** | **238.0** | **228.4** | **4484** | 97.1 | 2863.5 |
+| 90 % | same_session | 66.7 | 57.2 | 17900 | 101.2 | 2587.2 |
+| 90 % | cross_request | 66.8 | 57.2 | 17901 | 105.0 | 2504.0 |
+| 90 % | **cross_session** | **238.3** | **228.8** | **4476** | 92.6 | 2992.3 |
+| ~98.4 % | same_session | **21.9** | **12.3** | **82930** | 102.4 | 2517.1 |
+| ~98.4 % | cross_request | **21.5** | **12.2** | **83683** | 101.5 | 2533.8 |
+| ~98.4 % | **cross_session** | **237.8** | **228.2** | **4487** | 100.0 | 2787.8 |
+
+Effective prefill speedup vs the no-reuse `cross_session` control:
+
+| nominal reuse | 0 % | 25 % | 50 % | 75 % | 90 % | ~98.4 % |
+|---|---|---|---|---|---|---|
+| same_session prefill tok/s | 4486 | 5699 | 7958 | 12228 | 17900 | 82930 |
+| speedup | 1.00× | 1.27× | 1.77× | 2.72× | 3.99× | **18.5×** |
+| TTFT ms | 237.8 | 189.3 | 138.1 | 93.1 | 66.7 | **21.9** |
+
+The `cross_session` column is the point of the whole table: it is the same
+prompts at the same nominal reuse with the engine's page table rebuilt between
+prime and measure, and it refuses to move — **4475–4487 tok/s and 237.6–238.3 ms
+at every ratio**. Reuse is therefore genuine on this runtime and the benchmark's
+session boundary is genuinely cold, which is what makes the other rows
+trustworthy. Decode throughput is unaffected throughout (97–105 tok/s): prefix
+reuse buys TTFT and prefill, not decode.
+
+`prefix_reused_tokens` / `prefix_recomputed_tokens` are recorded as `UNAVAILABLE`
+for ExLlamaV3 (v1.5.3 reports only aggregate page counters, not per-request
+reused-token counts), so the reuse evidence here is the measured TTFT and prefill
+throughput plus the control — never a framework-reported figure.
+
+### 20. Scheduler interference
+
+Session `20261002-122339_exllamav3_official_e418c8`. Frozen workload: 3 requests
+actively decoding, then one large prefill (4096 tokens, LS profile) arrives.
+Phase statistics are derived from the persisted per-token timing traces.
+
+| Metric | Value |
+|---|---|
+| Background requests | 3 |
+| Intruder | LS, 4096 input tokens |
+| Intruder prefill | 898.10 ms |
+| Intruder TTFT | 2236.04 ms (vs 880 ms isolated for LS → **2.5× worse**) |
+| ITL during the prefill | **329.95 ms** (6 samples) |
+| ITL after the prefill | **14.62 ms** (3063 samples) |
+| **Max single-token stall** | **499.69 ms** |
+| p95 ITL (whole run) | 28.41 ms |
+| Background aggregate decode | 196.92 tok/s |
+
+Per resident request, the picture is identical and unambiguous:
+
+| request | during-prefill ITL | after-prefill ITL | max ITL | p95 ITL | decode tok/s | TTFT ms |
+|---|---|---|---|---|---|---|
+| 1 | 319.10 ms | 14.61 ms | 499.39 | 28.68 | 64.51 | 1588.70 |
+| 2 | 499.69 ms | 14.63 ms | 499.69 | 28.14 | 66.20 | 1828.97 |
+| 3 | 261.36 ms | 14.62 ms | 499.55 | 28.28 | 66.21 | 1831.54 |
+
+**A single 4 K prefill in flight costs each resident decoder up to half a second
+of stall — 22.6× its normal inter-token latency — and it slows the intruder itself
+by 2.5×.** Recovery is complete and immediate (14.6 ms afterwards), so this is a
+transient preemption stall, not degradation. `itl_before_ms` is `null` because the
+intruder arrived before any resident request had emitted a token
+(`phase_token_counts.before == 0`); that window is empty by construction and is
+reported as unavailable rather than as zero.
+
+This is the most decision-relevant result in the campaign for Pradium. On this
+machine a large prefill does not merely run slowly itself — it **visibly freezes
+every concurrent stream** for up to half a second at a time and multiplies their
+inter-token latency by ~23×, while the intruder is itself delayed 2.5×. Because
+recovery is complete, interleaving or chunking prefill is a pure win: it trades
+some intruder TTFT for eliminating the resident-stream stall almost entirely.
+
+### 20b. Mixed workloads
+
+Session `20261002-122404_exllamav3_official_a96d32`, 260 records / 200 measured.
+Frozen scenarios and their concurrent request mixes:
+
+| scenario | concurrent requests | n | TTFT ms | decode tok/s | aggregate tok/s | TPOT ms | ITL p99 | E2E ms | peak VRAM MB | GPU util % |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `interactive_burst` | 4×SS + 2×SM | 60 | 152.59 | 84.84 | 197.03 | 11.79 | 26.85 | 953.61 | 2898 | 60.17 |
+| `agent_like` | 4×MS (repeated medium prefixes, small suffixes) | 40 | 259.24 | 76.82 | 235.60 | 13.02 | 25.05 | 1078.47 | 3059 | 72.55 |
+| `mixed_generation` | MS + MM + ML together | 30 | 695.96 | 71.89 | 89.97 | 13.91 | 71.71 | 4187.06 | 3059 | 71.33 |
+| `mixed_prompt_sizes` | SM + MM + LM (128/1024/4096 inputs) | 30 | 718.24 | 61.14 | 154.55 | 16.36 | 31.96 | 4946.06 | 3139 | 86.30 |
+| `long_job_interference` | LL + 2×SS + SM | 40 | 551.70 | 51.76 | 84.52 | **19.35** | **94.81** | 3288.62 | 3139 | 81.39 |
+
+`long_job_interference` is the worst case on every axis that matters to a user:
+per-request decode falls to **51.76 tok/s**, TPOT rises to 19.35 ms, and ITL p99
+reaches **94.81 ms** — roughly 3.8× the tail of `agent_like` (25.05 ms), for the
+same hardware and model. One long job is enough to degrade every interactive
+request sharing the GPU, which is the mixed-workload form of §20's finding.
+
+### 21. Batching
+
+Session `20261002-123327_exllamav3_official_50d6af`, frozen B1/B2/B4/B8 at the MM
+profile. ExLlamaV3 has no separate static-batch API; the adapter's `generate_batch`
+enqueues every sequence before any decode step, so the sequences advance in
+lockstep, which is what this suite is defined to measure.
+
+| batch | measured requests | aggregate output tok/s | E2E ms | scaling vs B1 |
+|---|---|---|---|---|
+| B1 | 10 | 75.13 | 3407.61 | 1.00× |
+| B2 | 20 | 129.26 | 4043.08 | 1.72× |
+| B4 | 40 | 247.10 | 4159.26 | 3.29× |
+| B8 | 80 | 424.24 | 4828.88 | **5.65×** |
+
+Same shape as concurrency, from a different code path: **B8 delivers 5.65× of B1
+(70.6 % of ideal 8×)** while per-batch E2E latency grows 1.42×. Batching therefore
+buys aggregate throughput at the cost of individual request latency — the same
+trade §17 measures from the concurrency side, which is a useful consistency check
+because the two suites exercise the engine differently.
+
+The batching suite's records carry group-aggregate accounting only, so per-request
+TTFT/TPOT are reported `UNAVAILABLE` there; they are not silently estimated.
+
+### 22. Startup
+
+Session `20261002-123701_exllamav3_official_46dd9a`.
+
+| Milestone | Value |
+|---|---|
+| Adapter runtime init | 0.09 ms |
+| CUDA init | 0.09 ms |
+| Model load (weights → VRAM) | **1561.78 ms** |
+| Runner start → ready | 1561.88 ms |
+| **Cold first request TTFT** | **1574.01 ms** |
+| Start → first token | 3211.63 ms |
+| **Warm request TTFT (median of 5)** | **11.27 ms** |
+| CUDA graph capture | not applicable (v1.5.3 has no CUDA-graph path) |
+| Weight mapping / server ready | not reported by this runtime |
+
+The one number to take from this is the **cold-to-warm ratio: 1574.01 ms → 11.27 ms
+(140×)**. The first request ever seen by a freshly loaded model pays ~1.57 s before
+its first token, and everything after it is ~11 ms.
+
+**Measurement caveat, stated rather than hidden.** The harness's CLI loads the
+model before dispatching any suite, so the startup suite's `initialize()` /
+`load_model()` calls exercise the *re-load* path inside an already-warm process.
+Two consequences: `cuda_init_ms` is ~0.09 ms because the CUDA context already
+existed, and the suite's `idle_vram_mb` (2711 MB) is **not** true idle — it was
+sampled while the CLI's model was still resident. The genuine idle baselines are
+the ones in §2 and §13 (217–300 MB VRAM, ~15 W). A true cold-process startup
+measurement would need the runner to own process launch, which is a harness change
+and therefore out of scope for a frozen benchmark.
+
+### 22b. Soak / stability
+
+Session `20261002-123734_exllamav3_official_d3f059`, frozen configuration:
+30-minute duration, concurrency 1, profiles MM / SL / LL, 1000 ms telemetry poll.
+
+| Metric | Result |
+|---|---|
+| Duration requested / actual | 1800 s / **1805.54 s** |
+| Iterations | 170 |
+| **Failed requests** | **0** |
+| **VRAM growth (first vs last quartile)** | **+3.86 MB** (against 2949 MB resident) |
+| RAM growth | +36.54 MB |
+| TTFT change ratio | **−0.079** (TTFT improved ~7.9 %) |
+| Decode throughput change ratio | **+0.037** (throughput improved ~3.7 %) |
+
+Thirty minutes of continuous load produced **no failures, no VRAM leak, no RAM
+leak and no degradation** — the first-vs-last-quartile comparison actually moves
+slightly in the *favourable* direction for both latency and throughput, which is
+what a stable, non-throttling system looks like (GPU temperature stayed 50–73 °C
+and clocks 1897–1950 MHz throughout, so there was no thermal drift to confound it).
+The 3.86 MB VRAM drift is <0.2 % of the model+KV footprint and is allocator noise,
+not growth. **Stability is not a concern for this stack on this hardware.**
 
 ## 23. Failed / unsupported cases
 
@@ -542,23 +758,33 @@ optimization was implemented in this campaign.
    worth more than kernel-level arithmetic optimization. Any future comparison
    must hold CPU work constant or it will measure the CPU, not the engine.
 
-5. **The KV pool, not the GPU, limits the largest workloads.**
-   **MEASURED:** 32 K pool = 128 pages of 256 tokens; a 32768-token prompt with
-   256 output tokens needs 130 pages and is refused outright rather than
-   swapping or degrading.
-   **INTERPRETATION:** capacity is enforced by hard refusal. Any concurrency or
-   context capability claim must be stated together with the pool size, because
-   the same GPU can serve the same model at a different pool size and produce a
-   different pass/fail boundary.
+5. **The KV pool, not the GPU, limits the largest workloads — and pool size
+   interacts with workload shape, not just prompt length.**
+   **MEASURED:** a 32 K pool is 128 pages of 256 tokens; a 32768-token prompt with
+   256 output tokens needs 130 pages and is refused outright rather than swapped
+   or degraded. The same pool handled concurrency C8 on the 4096-token profiles
+   with zero failures (1755/1755 records) — because the C slots send the
+   *identical* prompt and therefore share its pages through the content-hash
+   index. A 49152-token pool let `CTX-32768` through cleanly (7 of 8 context
+   points under 32 K, the eighth only under the larger pool).
+   **INTERPRETATION:** capacity is enforced by hard refusal, and whether a given
+   concurrency level fits depends on how much of the concurrent prompts is
+   *shared*, not only on their length. A concurrency suite built from distinct long
+   prompts per slot would have exhausted the same pool that the identical-prompt
+   suite sailed through. Any concurrency or context capability claim must therefore
+   state its pool size *and* its prompt-sharing pattern, or it is not reproducible.
 
-6. **Prefix reuse is automatic and page-granular.**
-   **MEASURED:** 256-token pages with a chained content-hash index; a 9000-token
-   prompt leaves 8960 cached tokens (35 pages), and a repeated identical prompt is
-   served from cache (`alloc_cached_pages > 0`). A rebuild of the engine's page
-   table resets this verifiably (`cached_tokens == 0`, `alloc_cached_pages == 0`).
-   **INTERPRETATION:** reuse granularity (256 tokens) sets the floor on how much
-   of a shared system prefix can be reused; system prompts shorter than the page
-   size gain nothing.
+6. **Prefix reuse is automatic, and its reset is verifiable.**
+   **MEASURED:** a 9000-token prompt leaves 8960 cached tokens (35 pages of 256),
+   and a repeated identical prompt is served from cache (`alloc_cached_pages > 0`).
+   Rebuilding the engine's page table resets this verifiably (`cached_tokens == 0`
+   and `alloc_cached_pages == 0` on the next job), and the prefix suite's
+   `cross_session` control independently confirms a real session boundary (see
+   observation 11).
+   **INTERPRETATION:** reuse requires no client-side action — a repeated prefix is
+   picked up automatically — but the *observable* state is page counters, not
+   per-request reused-token counts, so per-request reuse must be measured through
+   TTFT and prefill time rather than read from the runtime.
 
 7. **The runtime engine cannot be driven from multiple threads.**
    **MEASURED:** `Generator.iterate()` is a single-threaded driver; concurrency
@@ -593,6 +819,37 @@ optimization was implemented in this campaign.
     **INTERPRETATION:** a throughput-only headline hides a real user-visible
     regression. Any future Pradium concurrency claim should state both axes plus
     TTFT inflation, since the two move in opposite directions.
+
+11. **Prefix reuse is highly effective, and a session boundary really is one.**
+    **MEASURED:** measured prefill throughput at 0 / 25 / 50 / 75 / 90 / ~98 %
+    nominal reuse is **4486 / 5699 / 7958 / 12228 / 17900 / 82930 tok/s**
+    (1.00× / 1.27× / 1.77× / 2.72× / 3.99× / **18.5×** versus no reuse), with TTFT
+    falling 237.8 → 21.9 ms at the top of the range. The `cross_session` control —
+    identical prompts with the engine's page table rebuilt between prime and
+    measure — holds **1.00× (≈4480 tok/s) at every single ratio**.
+    **INTERPRETATION:** the control is the important half of this measurement: it
+    proves the reuse is genuine rather than an artefact of warm weights, and it
+    proves the reset used for the session boundary is a real wipe. Intermediate
+    speedups are below the ideal (0.75 reuse gives 2.72× rather than 4.0×, 0.5
+    gives 1.77× rather than 2.0×) while the ~98 % case reaches 18.5× — so reuse is
+    essentially continuous rather than quantised to whole 256-token pages, and the
+    shortfall at intermediate ratios is consistent with a fixed per-request
+    prefill overhead of roughly 10–25 ms sitting on top of the incremental work.
+    That overhead, not cache granularity, is what caps the gain at moderate reuse.
+    For Pradium this says the reusable-prefix path is worth having and the fixed
+    prefill cost is worth attacking.
+
+12. **A large prefill freezes every concurrent stream.**
+    **MEASURED:** with three requests decoding, a single 4096-token prefill
+    arriving pushes resident inter-token latency from **14.62 ms to 329.95 ms**
+    (22.6×), with a **499.69 ms worst-case single-token stall**, and slows the
+    intruder itself from 880 ms to 2236 ms TTFT (2.5×). Recovery afterwards is
+    complete (14.62 ms) and the background aggregate still reaches 196.92 tok/s.
+    **INTERPRETATION:** prefill on this engine is effectively uninterruptible at
+    request granularity, so a single long prompt is a scheduler-wide stall event
+    rather than a cost borne only by its own request. This is the strongest
+    argument in the data for interleaved/chunked prefill, and it is a
+    *scheduling* problem — not a kernel-arithmetic one, and not a VRAM one.
 
 ## 25. Exact reproduction instructions
 
@@ -658,10 +915,33 @@ re-quantized.
 
 ### Supplementary configuration
 
-Two frozen workloads do not fit a 32768-token KV pool and are refused by the
-runtime: `CTX-32768` (needs 130 of 128 pages) and concurrency `C8` on
-`LM`/`LL` (144 / 168 pages). Those results are kept as FAILED in the official
-sessions, and are additionally covered by a **labelled supplementary run** at
-`max_num_tokens=49152` (192 pages) whose sessions record that pool size in their
-`runtime_config`, so the official 32 K configuration is never silently mixed with
-the supplementary one.
+One frozen workload does not fit a 32768-token KV pool and is refused by the
+runtime: `CTX-32768` needs 130 pages of the 128 available. That result is kept as
+**FAILED** in the official context session (§23) and is additionally covered by a
+**labelled supplementary run** at `max_num_tokens=49152` (192 pages), session
+`20261002-130942_exllamav3_official_6eeced`, whose records carry that pool size in
+their `runtime_config` so the official 32 K configuration can never be silently
+mixed with the supplementary one.
+
+| `CTX-32768` at 49152-token pool | value |
+|---|---|
+| records / measured runs | 13 / 10, **all SUCCESS + PASS**, `performance_valid` |
+| TTFT | 13445.14 ms |
+| prefill | 13417.58 ms → **2442 tok/s** |
+| decode | **58.76 tok/s** |
+| TPOT / ITL p95 | 17.02 ms / 17.65 ms |
+| E2E | 17775.69 ms |
+| peak VRAM | 3659 MB |
+| GPU utilisation / power / temp | **97.8 %** / **165.58 W** / 74.5 °C |
+
+So the point is attainable — the model supports 131072 positions — and the
+official 32 K-pool failure was purely a sizing decision in the adapter
+configuration, not a capability limit. No retry was applied to the official
+session: rewriting a measured FAILED result because a *different* configuration
+succeeds would be exactly the kind of selective re-run the campaign forbids.
+
+The concurrency suite needed no supplement: all nine profiles passed at C8 under
+the official 32768-token pool (1755/1755 records, 0 failures), because the C slots
+share the identical prompt prefix through the content-hash page table. This is
+worth recording as a finding in its own right — a concurrency workload that used
+*distinct* long prompts per slot would have exhausted the same 32 K pool.

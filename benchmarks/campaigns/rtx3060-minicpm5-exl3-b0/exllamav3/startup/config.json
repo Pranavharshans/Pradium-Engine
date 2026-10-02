@@ -1,0 +1,130 @@
+{
+  "batching": {
+    "batch_sizes": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "profile": "MM"
+  },
+  "cli": {
+    "bpw": 4.0,
+    "command": "run",
+    "concurrency": 1,
+    "deep_telemetry": false,
+    "mode": "official",
+    "model": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+    "model_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "no_plots": false,
+    "quantization": "EXL3",
+    "quick": false,
+    "results_dir": "/workspace/pradium/benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/sessions",
+    "runtime": "exllamav3",
+    "runtime_config": "{\"model_dir\":\"/workspace/models/minicpm5-2b-exl3\",\"max_num_tokens\":32768,\"max_batch_size\":16,\"max_chunk_size\":2048,\"model\":\"ewin-reg/MiniCPM5-2B-EXL3-Quantized\",\"model_revision\":\"e36fbb568f466739d7c244a5100d01acf93d3b7f\"}",
+    "suite": "startup",
+    "time_scale": 0.1,
+    "tokenizer": "hf:ewin-reg/MiniCPM5-2B-EXL3-Quantized@e36fbb568f466739d7c244a5100d01acf93d3b7f"
+  },
+  "concurrency": {
+    "levels": [
+      1,
+      2,
+      4,
+      8
+    ]
+  },
+  "context": {
+    "input_tokens": [
+      128,
+      512,
+      1024,
+      2048,
+      4096,
+      8192,
+      16384,
+      32768
+    ],
+    "output_tokens": 256
+  },
+  "matrix": {
+    "inputs": {
+      "L": 4096,
+      "M": 1024,
+      "S": 128
+    },
+    "outputs": {
+      "L": 1024,
+      "M": 256,
+      "S": 64
+    },
+    "profiles": [
+      "SS",
+      "SM",
+      "SL",
+      "MS",
+      "MM",
+      "ML",
+      "LS",
+      "LM",
+      "LL"
+    ]
+  },
+  "measured_runs": 10,
+  "modes": {
+    "official": {
+      "measured_runs": 10,
+      "warmups": 3
+    },
+    "quick": {
+      "measured_runs": 2,
+      "warmups": 1
+    },
+    "validation": {
+      "measured_runs": 2,
+      "warmups": 1
+    }
+  },
+  "prefix_cache": {
+    "ratios": [
+      0.0,
+      0.25,
+      0.5,
+      0.75,
+      0.9,
+      1.0
+    ],
+    "requests_per_ratio": 4,
+    "scenarios": [
+      "same_session",
+      "cross_request",
+      "cross_session"
+    ],
+    "total_input_tokens": 1024,
+    "unique_suffix_tokens_at_full_reuse": 16
+  },
+  "scheduler": {
+    "background_profile": "ML",
+    "background_requests": 3,
+    "intruder_delay_ms": 250,
+    "intruder_profile": "LS"
+  },
+  "soak": {
+    "duration_minutes": 30,
+    "poll_interval_ms": 1000,
+    "profiles": [
+      "MM",
+      "SL",
+      "LL"
+    ]
+  },
+  "startup": {
+    "request_profile": "MM",
+    "warm_request_count": 5
+  },
+  "telemetry": {
+    "deep_interval_ms": 25,
+    "interval_ms": 100
+  },
+  "warmups": 3
+}

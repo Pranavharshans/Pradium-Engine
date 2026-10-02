@@ -139,7 +139,15 @@ class ExLlamaV3Runtime(RuntimeAdapter):
 
         self._torch = torch
         self._milestones["initialize_ns"] = time.perf_counter_ns()
-        if not torch.cuda.is_available():
+        # The first CUDA touch is what actually creates the context, so measure it
+        # here; the startup suite reports this value as cuda_init_ms.
+        t_cuda = time.perf_counter_ns()
+        available = torch.cuda.is_available()
+        if available:
+            self._milestones["cuda_device"] = torch.cuda.get_device_name(self.config.device)
+            torch.cuda.synchronize(self.config.device)
+        self._milestones["cuda_init_ms"] = (time.perf_counter_ns() - t_cuda) / 1e6
+        if not available:
             raise RuntimeAdapterError(
                 "ExLlamaV3 adapter requires a CUDA device; torch reports none"
             )
@@ -189,7 +197,13 @@ class ExLlamaV3Runtime(RuntimeAdapter):
         self._cache = cache
         self._model = model
 
+        # Cache allocation and the first CUDA touch are separable costs.
+        t_cuda = time.perf_counter_ns()
+        torch.cuda.synchronize(self.config.device)
+        self._milestones["cuda_sync_ms"] = (time.perf_counter_ns() - t_cuda) / 1e6
+
         t_load = time.perf_counter_ns()
+        self._milestones["config_cache_ctor_ms"] = (t_load - t0) / 1e6
         try:
             model.load(progressbar=bool(self.config.progressbar), device=self.config.device)
         except Exception as exc:  # noqa: BLE001
@@ -198,7 +212,6 @@ class ExLlamaV3Runtime(RuntimeAdapter):
                 raise RuntimeOutOfMemoryError(str(exc)) from exc
             raise RuntimeAdapterError(f"ExLlamaV3 model load failed: {exc}") from exc
         self._milestones["model_load_ms"] = (time.perf_counter_ns() - t_load) / 1e6
-        self._milestones["cuda_init_ms"] = (t_load - t0) / 1e6
 
         gen_kwargs: dict[str, Any] = {
             "model": model,

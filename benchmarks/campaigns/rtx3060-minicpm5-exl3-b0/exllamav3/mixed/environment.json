@@ -1,0 +1,149 @@
+{
+  "benchmark_version": "PRADIUM-RUNTIME-BENCH-v2",
+  "cli_arguments": [
+    "run",
+    "mixed",
+    "--runtime",
+    "exllamav3",
+    "--tokenizer",
+    "hf:ewin-reg/MiniCPM5-2B-EXL3-Quantized@e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "--model",
+    "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+    "--model-revision",
+    "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "--quantization",
+    "EXL3",
+    "--bpw",
+    "4.0",
+    "--results-dir",
+    "/workspace/pradium/benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/sessions",
+    "--runtime-config",
+    "{\"model_dir\":\"/workspace/models/minicpm5-2b-exl3\",\"max_num_tokens\":32768,\"max_batch_size\":16,\"max_chunk_size\":2048,\"model\":\"ewin-reg/MiniCPM5-2B-EXL3-Quantized\",\"model_revision\":\"e36fbb568f466739d7c244a5100d01acf93d3b7f\"}"
+  ],
+  "cpu": {
+    "logical_cores": 4,
+    "model": "x86_64",
+    "physical_cores": 4
+  },
+  "environment_variables": {
+    "CUDA_DEVICE_ORDER": "PCI_BUS_ID",
+    "HF_HOME": "/workspace/.hf_home",
+    "NVIDIA_VISIBLE_DEVICES": "void",
+    "TOKENIZERS_PARALLELISM": "false"
+  },
+  "gpu": {
+    "all_gpus": [
+      {
+        "backend": "nvidia-smi",
+        "cuda": null,
+        "driver": "550.144.03",
+        "index": 0,
+        "name": "NVIDIA GeForce RTX 3060",
+        "uuid": "GPU-9bdacdb0-33f1-e196-6c1f-dc65129fb653",
+        "vram_total_mb": 12288.0
+      }
+    ],
+    "cuda": null,
+    "driver": "550.144.03",
+    "name": "NVIDIA GeForce RTX 3060",
+    "uuid": "GPU-9bdacdb0-33f1-e196-6c1f-dc65129fb653",
+    "vram_total_mb": 12288.0
+  },
+  "os": {
+    "machine": "x86_64",
+    "platform": "Linux-6.8.0-60-generic-x86_64-with-glibc2.39",
+    "release": "6.8.0-60-generic",
+    "system": "Linux",
+    "version": "#63~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 22 19:00:15 UTC 2"
+  },
+  "packages": {
+    "psutil": null,
+    "pynvml": null,
+    "torch": "2.10.0+cu128"
+  },
+  "pradium_git_branch": "bench/exl3-runtime-b0-rtx3060",
+  "pradium_git_commit": "cf4e8754e6edcf588ebf0a207472e19c24f233d3",
+  "pradium_git_dirty": true,
+  "python": {
+    "executable": "/workspace/envs/exllamav3/bin/python",
+    "implementation": "CPython",
+    "version": "3.12.3"
+  },
+  "runtime": {
+    "cache_stats_at_load": {
+      "active_jobs": 0,
+      "alloc_cached_pages": 0,
+      "alloc_pages": 0,
+      "alloc_tier_pages": 0,
+      "cached_tokens": 0,
+      "free_tokens": 32768,
+      "hit_rate": null,
+      "max_tokens": 32768,
+      "page_size": 256,
+      "pending_jobs": 0,
+      "tier_cached_tokens": 0,
+      "tier_hit_rate": null,
+      "tier_max_tokens": 0,
+      "used_tokens": 0
+    },
+    "capability": [
+      8,
+      6
+    ],
+    "commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
+    "config": {
+      "cache_k_bits": null,
+      "cache_v_bits": null,
+      "cpu_cache_size": 0,
+      "cuda_graphs": false,
+      "device": "cuda:0",
+      "greedy_sampler": "ArgmaxSampler",
+      "max_batch_size": 16,
+      "max_chunk_size": 2048,
+      "max_num_tokens": 32768,
+      "model_dir": "/workspace/models/minicpm5-2b-exl3"
+    },
+    "exl3_audit": {
+      "exl3_only": true,
+      "linear_modules": 295,
+      "non_exl3_linears": [],
+      "quant_type_counts": {
+        "exl3": 295
+      },
+      "storage_info": {
+        "bpw_head": 6.007935168696385,
+        "bpw_layer": 4.01267835828993,
+        "vram_bits": 9558803680.0
+      }
+    },
+    "exllamav3_path": "/workspace/envs/exllamav3/lib/python3.12/site-packages/exllamav3/__init__.py",
+    "gpu": "NVIDIA GeForce RTX 3060",
+    "kv_cache": {
+      "initialized": true,
+      "k_bits": null,
+      "layer_type": "CacheLayer_fp16",
+      "max_num_tokens": 32768,
+      "num_layers": 0,
+      "num_slots": 16,
+      "v_bits": null
+    },
+    "model": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+    "model_config": {
+      "architecture": "LlamaForCausalLM",
+      "eos_token_id": 1,
+      "max_position_embeddings": 131072,
+      "model_type": null,
+      "num_hidden_layers": 42,
+      "vocab_size": 130560
+    },
+    "model_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "name": "exllamav3",
+    "quantization": "EXL3",
+    "torch": "2.10.0+cu128",
+    "torch_cuda": "12.8",
+    "version": "1.5.3+cu128.torch2.10.0"
+  },
+  "system_ram_mb": 32030.9,
+  "telemetry_interval_ms": 100,
+  "timestamp_utc": "2026-10-02T12:24:06.064888+00:00"
+}

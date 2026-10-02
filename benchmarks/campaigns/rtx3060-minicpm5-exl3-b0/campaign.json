@@ -259,9 +259,31 @@
       "GPU is never the binding constraint: <=3 GB of 12 GB VRAM, 65-92% utilisation, 113-152 W of 170 W, 50-73 C."
     ],
     "coverage": {
-      "matrix": "9/9 workloads, 117/117 records PASS, performance_valid",
-      "context": "7/8 lengths valid; CTX-32768 FAILED on KV pool sizing",
-      "concurrency": "9 profiles x C1/C2/C4/C8, 1755/1755 records, 0 failures"
+      "matrix": "9/9 workloads, 117/117 records SUCCESS/PASS, performance_valid",
+      "context": "7/8 lengths valid under the official 32768-token pool; CTX-32768 FAILED on pool sizing and is additionally measured at 49152 tokens as a labelled supplementary run (10/10 SUCCESS)",
+      "concurrency": "9 profiles x C1/C2/C4/C8, 1755/1755 records, 0 failures",
+      "prefix_cache": "6 ratios x 3 scenarios, 1440 records, 0 failures; cross_session control flat at 4475-4487 tok/s at every ratio",
+      "scheduler": "3 resident decoders + 1 large prefill; ITL 14.62 ms -> 329.95 ms during prefill, 499.69 ms max stall, full recovery",
+      "mixed": "5 frozen scenarios, 260 records, 200 measured",
+      "batching": "B1/B2/B4/B8 at MM, 165 records; B8 = 5.65x B1",
+      "startup": "model load 1561.78 ms, cold first request TTFT 1574.01 ms, warm TTFT 11.27 ms median (re-load path; see report caveat)",
+      "soak": "30 min, 170 iterations, 0 failures, VRAM +3.86 MB, RAM +36.54 MB, TTFT -7.9%, throughput +3.7%"
+    },
+    "supplementary_configuration": {
+      "reason": "CTX-32768 (32768 input + 256 output = 33024 tokens = 130 pages) does not fit the official 32768-token KV pool (128 pages) and is refused by the runtime",
+      "max_num_tokens": 49152,
+      "session": "20261002-130942_exllamav3_official_6eeced",
+      "result": {
+        "ttft_ms": 13445.14,
+        "prefill_tok_s": 2442.17,
+        "decode_tok_s": 58.755,
+        "tpot_ms": 17.02,
+        "e2e_ms": 17775.687,
+        "vram_peak_mb": 3659,
+        "gpu_util_avg": 97.808,
+        "gpu_power_avg": 165.581
+      },
+      "note": "different runtime configuration, labelled as such everywhere; the official 32768-token result is kept as FAILED and is not overwritten"
     }
   }
 }
