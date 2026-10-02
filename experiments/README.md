@@ -36,6 +36,11 @@ pushed from the local checkout after being copied back, so local and remote
 history stay synchronized with the exact VM-run revision recorded in the
 evidence files.
 
+`.gitignore` keeps generated benchmark sessions out of the repository
+(`results/`), with an explicit exception for `experiments/*/results/`: the
+per-experiment evidence directories are the committed record of this loop and
+are small (raw.jsonl, summaries, traces, correctness diffs).
+
 ## Ground rules
 
 - Only the frozen 3x3 core matrix (SS..LL) is used for performance decisions.

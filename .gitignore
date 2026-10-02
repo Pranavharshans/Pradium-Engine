@@ -17,6 +17,10 @@ ENV/
 # --- Benchmark result sessions (generated; never commit) ---
 benchmarks/results/
 results/
+# ...except the optimization-loop evidence under experiments/, which is the
+# committed record of each experiment (raw records, summaries, correctness).
+!experiments/*/results/
+!experiments/*/results/**
 
 # --- Generated corpus materializations (deterministic; regenerate via CLI) ---
 benchmarks/corpus/materialized/
