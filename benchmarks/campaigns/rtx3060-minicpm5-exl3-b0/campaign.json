@@ -24,7 +24,14 @@
       "warmups": 3,
       "measured_runs": 10,
       "headline_statistic": "median",
-      "also_retained": ["mean", "standard_deviation", "p95", "p99", "min", "max"]
+      "also_retained": [
+        "mean",
+        "standard_deviation",
+        "p95",
+        "p99",
+        "min",
+        "max"
+      ]
     },
     "core_matrix": [
       "SS = 128 input / 64 output",
@@ -108,7 +115,12 @@
       "model.safetensors.tensor_manifest_sha256": "57b2969f1f0a867bb85bd96a927ac801b8361577da52d5ad1cef9af444da2a6b"
     },
     "tensor_layout": {
-      "quantized_linear_tensors": ["trellis", "suh", "svh", "mul1"],
+      "quantized_linear_tensors": [
+        "trellis",
+        "suh",
+        "svh",
+        "mul1"
+      ],
       "note": "Standard exllamav3 EXL3 linear tensor group. quantization_config.json is produced by exllamav3/conversion/quant_config.py (create_quantization_config_json), i.e. it is an exllamav3-native artifact, not a third-party format."
     }
   },
@@ -188,7 +200,90 @@
   "workspace_layout": {
     "pradium": "/workspace/pradium",
     "models": "/workspace/models/minicpm5-2b-exl3",
-    "runtimes": ["/workspace/runtimes/exllamav3", "/workspace/runtimes/trellis-serve", "/workspace/runtimes/tensorfold"],
-    "envs": ["/workspace/envs/exllamav3", "/workspace/envs/pradium", "/workspace/envs/tools", "/workspace/envs/driverprobe", "/workspace/envs/tensorfold"]
+    "runtimes": [
+      "/workspace/runtimes/exllamav3",
+      "/workspace/runtimes/trellis-serve",
+      "/workspace/runtimes/tensorfold"
+    ],
+    "envs": [
+      "/workspace/envs/exllamav3",
+      "/workspace/envs/pradium",
+      "/workspace/envs/tools",
+      "/workspace/envs/driverprobe",
+      "/workspace/envs/tensorfold"
+    ]
+  },
+  "results_summary": {
+    "supported_runtimes_with_performance_data": [
+      "exllamav3"
+    ],
+    "official_sessions": "benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/exllamav3/<suite>/",
+    "raw_sessions_on_vm": "/workspace/pradium/benchmarks/campaigns/rtx3060-minicpm5-exl3-b0/sessions/",
+    "official_configuration": {
+      "model_dir": "/workspace/models/minicpm5-2b-exl3",
+      "max_num_tokens": 32768,
+      "max_batch_size": 16,
+      "max_chunk_size": 2048,
+      "cache_dtype": "fp16",
+      "cuda_graphs": false,
+      "sampler": "ArgmaxSampler (greedy)"
+    },
+    "headline_medians": {
+      "SS": {
+        "ttft_ms": 69.53,
+        "prefill_tok_s": 2106,
+        "decode_tok_s": 109.89,
+        "tpot_ms": 9.11,
+        "peak_vram_mb": 2799
+      },
+      "MM": {
+        "ttft_ms": 237.13,
+        "prefill_tok_s": 4513,
+        "decode_tok_s": 102.27,
+        "tpot_ms": 9.87,
+        "peak_vram_mb": 2951
+      },
+      "LL": {
+        "ttft_ms": 875.3,
+        "prefill_tok_s": 4739,
+        "decode_tok_s": 79.19,
+        "tpot_ms": 12.96,
+        "peak_vram_mb": 3031
+      }
+    },
+    "key_findings": [
+      "Decode throughput falls 109.9 -> 79.2 tok/s from SS to LL while the ITL MEDIAN stays within 7.89-8.98 ms; the loss is entirely in the tail (ITL p99 20.69 -> 69.09 ms).",
+      "Prefill throughput rises with prompt length (2106 tok/s at 128 tokens, ~5070 at 2048) then falls (3333 at 16384): short prompts are launch/overhead dominated.",
+      "Concurrency reaches only 50-74% of ideal 8x scaling at C8, with per-request decode at 40-74% of C1, while GPU utilisation drops to 44.9% and power to 65.8 W on the SS profile: the limiter is host-side work on 2 physical cores, not VRAM or kernels.",
+      "The 32768-token context point cannot fit a 32768-token KV pool (needs 130 pages of 128) and is refused by the runtime; the model itself supports 131072.",
+      "GPU is never the binding constraint: <=3 GB of 12 GB VRAM, 65-92% utilisation, 113-152 W of 170 W, 50-73 C."
+    ],
+    "coverage": {
+      "matrix": "9/9 workloads, 117/117 records SUCCESS/PASS, performance_valid",
+      "context": "7/8 lengths valid under the official 32768-token pool; CTX-32768 FAILED on pool sizing and is additionally measured at 49152 tokens as a labelled supplementary run (10/10 SUCCESS)",
+      "concurrency": "9 profiles x C1/C2/C4/C8, 1755/1755 records, 0 failures",
+      "prefix_cache": "6 ratios x 3 scenarios, 1440 records, 0 failures; cross_session control flat at 4475-4487 tok/s at every ratio",
+      "scheduler": "3 resident decoders + 1 large prefill; ITL 14.62 ms -> 329.95 ms during prefill, 499.69 ms max stall, full recovery",
+      "mixed": "5 frozen scenarios, 260 records, 200 measured",
+      "batching": "B1/B2/B4/B8 at MM, 165 records; B8 = 5.65x B1",
+      "startup": "model load 1561.78 ms, cold first request TTFT 1574.01 ms, warm TTFT 11.27 ms median (re-load path; see report caveat)",
+      "soak": "30 min, 170 iterations, 0 failures, VRAM +3.86 MB, RAM +36.54 MB, TTFT -7.9%, throughput +3.7%"
+    },
+    "supplementary_configuration": {
+      "reason": "CTX-32768 (32768 input + 256 output = 33024 tokens = 130 pages) does not fit the official 32768-token KV pool (128 pages) and is refused by the runtime",
+      "max_num_tokens": 49152,
+      "session": "20261002-130942_exllamav3_official_6eeced",
+      "result": {
+        "ttft_ms": 13445.14,
+        "prefill_tok_s": 2442.17,
+        "decode_tok_s": 58.755,
+        "tpot_ms": 17.02,
+        "e2e_ms": 17775.687,
+        "vram_peak_mb": 3659,
+        "gpu_util_avg": 97.808,
+        "gpu_power_avg": 165.581
+      },
+      "note": "different runtime configuration, labelled as such everywhere; the official 32768-token result is kept as FAILED and is not overwritten"
+    }
   }
 }

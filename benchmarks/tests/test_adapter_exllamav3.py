@@ -243,6 +243,27 @@ class TestExLlamaV3Adapter(unittest.TestCase):
         self.assertGreaterEqual(events[-1].prefill_ms, 0.0)
 
     # --- batching ----------------------------------------------------------
+    def test_load_model_is_reentrant(self) -> None:
+        """The startup suite re-loads an already-loaded adapter to time a cold start.
+
+        That must replace the model rather than map a second copy and leave a
+        second scheduler thread driving the engine.
+        """
+        request = make_conformance_request(64, 8)
+        before = self.adapter.generate(request)
+        import torch
+
+        vram_before = torch.cuda.memory_allocated(0)
+        self.adapter.load_model()
+        after_load_vram = torch.cuda.memory_allocated(0)
+        self.assertLess(
+            after_load_vram, vram_before * 1.5,
+            "re-loading the adapter mapped a second copy of the weights",
+        )
+        after = self.adapter.generate(make_conformance_request(64, 8))
+        self.assertEqual(len(after.token_ids), 8)
+        self.assertEqual(len(before.token_ids), 8)
+
     def test_static_batch_returns_one_result_per_request(self) -> None:
         requests = [
             BenchmarkRequest(

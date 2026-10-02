@@ -139,7 +139,15 @@ class ExLlamaV3Runtime(RuntimeAdapter):
 
         self._torch = torch
         self._milestones["initialize_ns"] = time.perf_counter_ns()
-        if not torch.cuda.is_available():
+        # The first CUDA touch is what actually creates the context, so measure it
+        # here; the startup suite reports this value as cuda_init_ms.
+        t_cuda = time.perf_counter_ns()
+        available = torch.cuda.is_available()
+        if available:
+            self._milestones["cuda_device"] = torch.cuda.get_device_name(self.config.device)
+            torch.cuda.synchronize(self.config.device)
+        self._milestones["cuda_init_ms"] = (time.perf_counter_ns() - t_cuda) / 1e6
+        if not available:
             raise RuntimeAdapterError(
                 "ExLlamaV3 adapter requires a CUDA device; torch reports none"
             )
@@ -151,6 +159,13 @@ class ExLlamaV3Runtime(RuntimeAdapter):
 
         if not self.config.model_dir:
             raise RuntimeAdapterError("model_dir is required for the exllamav3 adapter")
+
+        # Re-entrant by contract: the startup suite calls initialize()/load_model()
+        # on an adapter the CLI has already loaded, to time a cold start. Without
+        # this, a second Model would be mapped into VRAM and a second scheduler
+        # thread would drive the replaced generator concurrently.
+        if self._loaded:
+            self.unload_model()
 
         t0 = time.perf_counter_ns()
         if not os.path.isdir(self.config.model_dir):
@@ -182,7 +197,13 @@ class ExLlamaV3Runtime(RuntimeAdapter):
         self._cache = cache
         self._model = model
 
+        # Cache allocation and the first CUDA touch are separable costs.
+        t_cuda = time.perf_counter_ns()
+        torch.cuda.synchronize(self.config.device)
+        self._milestones["cuda_sync_ms"] = (time.perf_counter_ns() - t_cuda) / 1e6
+
         t_load = time.perf_counter_ns()
+        self._milestones["config_cache_ctor_ms"] = (t_load - t0) / 1e6
         try:
             model.load(progressbar=bool(self.config.progressbar), device=self.config.device)
         except Exception as exc:  # noqa: BLE001
@@ -191,7 +212,6 @@ class ExLlamaV3Runtime(RuntimeAdapter):
                 raise RuntimeOutOfMemoryError(str(exc)) from exc
             raise RuntimeAdapterError(f"ExLlamaV3 model load failed: {exc}") from exc
         self._milestones["model_load_ms"] = (time.perf_counter_ns() - t_load) / 1e6
-        self._milestones["cuda_init_ms"] = (t_load - t0) / 1e6
 
         gen_kwargs: dict[str, Any] = {
             "model": model,
@@ -243,6 +263,9 @@ class ExLlamaV3Runtime(RuntimeAdapter):
 
     # ------------------------------------------------------------ scheduler
     def _start_scheduler(self) -> None:
+        # Never leave a previous driver thread alive: two threads calling
+        # Generator.iterate() concurrently would corrupt the engine state.
+        self._stop_scheduler()
         self._scheduler_stop.clear()
         self._scheduler_error = None
         self._scheduler = threading.Thread(
@@ -736,8 +759,11 @@ class ExLlamaV3Runtime(RuntimeAdapter):
                     "content-hash page table; best-effort under eviction."
                 ),
                 "supports_cache_reset": (
-                    "No public free_cache in v1.5.3; drains the queue and calls "
-                    "pagetable.reset_page_table(), verified by get_cache_stats()."
+                    "v1.5.3 has no public free_cache. Rebuilding the Generator "
+                    "(fresh PageTable over the same Cache) is the only reset whose "
+                    "effect is observable: cached_tokens == 0 and the next "
+                    "identical prompt reports alloc_cached_pages == 0. Verified "
+                    "by the adapter conformance tests."
                 ),
                 "supports_cuda_graphs": "v1.5.3 has no CUDA-graph capture path.",
                 "supports_internal_queue_metrics": "time_enqueued (queue wait) only.",

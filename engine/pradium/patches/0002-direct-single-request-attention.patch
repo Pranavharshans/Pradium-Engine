@@ -1,0 +1,148 @@
+diff --git a/exllamav3/modules/attention_fn/bc_attn.py b/exllamav3/modules/attention_fn/bc_attn.py
+--- a/exllamav3/modules/attention_fn/bc_attn.py
++++ b/exllamav3/modules/attention_fn/bc_attn.py
+@@ -6,6 +6,7 @@
+ from ...constants import PAGE_SIZE
+ from ...util.tensor import g_tensor_cache
+ from .smem import smem_limit
++from .pradium_policy import direct_attention_eligible
+ 
+ """
+ Graph-captured decode attention (BC_Attention): the whole attention block for a decode step --
+@@ -301,7 +302,8 @@
+         # The live split count and split length are runtime kernel arguments derived from the
+         # block-table bound per call (patched into the graph); the grid is sized to the cap
+         target = 2 * _get_sm_count(dev)
+-        splits_cap = max(1, min(target // programs, 128))
++        direct = regime == 2
++        splits_cap = 1 if direct else max(1, min(target // programs, 128))
+         window_left, window_right = _normalize_window(self.window_size)
+ 
+         cache_t = "*i32" if self.quant else "*fp16"
+@@ -321,7 +323,8 @@
+             q_len = q_len, kv_append_len = q_len, n_q_heads = qh, n_kv_heads = kvh,
+             page_size = PAGE_SIZE, head_dim = hd, HD_PAD = hd_pad, scale = float(self.sm_scale),
+             CAUSAL = bool(causal), WINDOW_LEFT = window_left, WINDOW_RIGHT = window_right,
+-            SOFTCAP = float(self.softcap or 0.0), FINAL = False, HAS_SINKS = False,
++            SOFTCAP = float(self.softcap or 0.0), FINAL = direct,
++            HAS_SINKS = direct and self.sinks is not None,
+             BLOCK_M = block_m, BLOCK_H = block_h, BLOCK_ROWS = block_rows, BLOCK_N = block_n,
+         )
+         k_split = _compile_kernel(dev, _paged_attn_decode_split_kernel, sig, consts, 4, 2)
+@@ -341,6 +344,8 @@
+         )
+         k_combine = _compile_kernel(dev, _paged_attn_decode_combine_kernel, sig_c, consts_c, 4, 1)
+         k_combine.grid_y = (block_rows // rows_sub) * (hd_pad // d_sub)
++        if direct:
++            k_combine = None
+ 
+         k_update = None
+         if not self.quant:
+@@ -379,6 +384,8 @@
+         # sparse kernels in _configure_qsa (same bucketed tags, so the footprint is the max)
+         pn_o = programs * splits_cap * block_rows * hd_pad
+         pn_ml = programs * splits_cap * block_rows * 2
++        if direct:
++            pn_o, pn_ml = 1, 1  # unused by FINAL; preserve tensor argument types
+         if regime == 1:
+             pn_o, pn_ml = self._qsa_partial_sizes(bsz * q_len)
+         partial_o = g_tensor_cache.get_bucketed(dev, pn_o, torch.float, "bca_po")
+@@ -595,6 +602,14 @@
+                 # The generator usually passes positions as a tensor and leaves the scalar at
+                 # 0; the scoring/expansion bounds consume the scalar
+                 position = int(host_seqlens[0].item())
++
++        if direct_attention_eligible(
++            enabled_limit = int(os.environ.get("EXL3_PRADIUM_DIRECT_ATTN_MAX_TOKENS", "0")),
++            bsz = bsz, q_len = q_len, table_pages = block_table.shape[1],
++            page_size = PAGE_SIZE, head_dim = self.head_dim,
++            v_head_dim = self.v_head_dim, qsa = self.qsa,
++        ):
++            regime = 2
+ 
+         # The captured graph freezes the inv_freq table geometry (table flag, stride, partial
+         # head dim) and the causality of the attention kernels, so either changing means
+diff --git a/exllamav3/exllamav3_ext/libtorch/attention.cpp b/exllamav3/exllamav3_ext/libtorch/attention.cpp
+--- a/exllamav3/exllamav3_ext/libtorch/attention.cpp
++++ b/exllamav3/exllamav3_ext/libtorch/attention.cpp
+@@ -137,7 +137,7 @@
+     TORCH_CHECK(gate_mode >= 0 && gate_mode <= 3, "BC_Attention: unsupported gate mode");
+     TORCH_CHECK(gate_mode != 1 || (g_weight && !qg_ptrs_trellis && !g_proj), "BC_Attention: headwise gate requires an fp16 gate weight");
+     TORCH_CHECK(!g_weight || gate_mode == 1 || (gate_mode == 2 && !qg_ptrs_trellis && !g_proj), "BC_Attention: fp16 gate weight requires full gate mode without a quantized g projection");
+-    slots.resize(2 * MAX_BSZ * MAX_QLEN);
++    slots.resize(3 * MAX_BSZ * MAX_QLEN);
+ 
+     if (qkv_ptrs_trellis)
+     {
+@@ -190,7 +190,7 @@
+ bool BC_Attention::needs_configure(int bsz, int q_len, int regime)
+ {
+     TORCH_CHECK(1 <= bsz && bsz <= MAX_BSZ && 1 <= q_len && q_len <= MAX_QLEN, "BC_Attention: shape out of range");
+-    TORCH_CHECK(regime == 0 || regime == 1, "BC_Attention: bad regime");
++    TORCH_CHECK(regime >= 0 && regime <= 2, "BC_Attention: bad regime");
+     return !slot(bsz, q_len, regime).configured;
+ }
+ 
+@@ -215,7 +215,11 @@
+     c10::optional<at::Tensor> yp
+ )
+ {
+-    TORCH_CHECK(regime == 0 || qsa, "BC_Attention: sparse regime without QSA indexer");
++    TORCH_CHECK(regime != 1 || qsa, "BC_Attention: sparse regime without QSA indexer");
++    TORCH_CHECK(regime >= 0 && regime <= 2, "BC_Attention: bad regime");
++    TORCH_CHECK(regime != 2 || (bsz == 1 && q_len == 1 &&
++                head_dim == v_head_dim && !qsa && splits_cap == 1 && !k_combine),
++                "BC_Attention: unsupported direct slot");
+     Slot& s = slot(bsz, q_len, regime);
+     int R = bsz * q_len;
+ 
+@@ -781,7 +785,7 @@
+             (void*) (intptr_t) split_len,
+             (void*) (intptr_t) (int) block_table.size(1),
+             (void*) (intptr_t) num_splits,
+-            (void*) s.q.data_ptr(),  // sinks: dead arg, slots compile with HAS_SINKS = false
++            (regime == 2 && sinks) ? (void*) sinks.value().data_ptr() : (void*) s.q.data_ptr(),
+         };
+         // Launched at the split cap so the captured grid never changes; splits at or above the
+         // live count exit without storing
+@@ -796,6 +800,7 @@
+             graph->record_param(s.k_split->handle(), GP_end, 0);
+         }
+     }
++    if (regime != 2)
+     {
+         std::vector<void*> args =
+         {
+@@ -868,7 +873,7 @@
+     Slot& s = slot(bsz, q_len, regime);
+     TORCH_CHECK(s.configured, "BC_Attention: slot not configured");
+     TORCH_CHECK(x.is_contiguous() && y.is_contiguous(), "BC_Attention: x and y must be contiguous");
+-    TORCH_CHECK(regime == 0 || qsa, "BC_Attention: sparse regime without QSA indexer");
++    TORCH_CHECK(regime != 1 || qsa, "BC_Attention: sparse regime without QSA indexer");
+ 
+     // First run per slot executes eagerly (GEMM autotune, kernel warmup); the second run is
+     // captured, then launched below like every later run, with only the I/O pointers patched
+@@ -1008,7 +1013,8 @@
+         params.emplace_back(GP_attn_split_len, (void*) (uintptr_t) split_len);
+         params.emplace_back(GP_attn_num_pages, (void*) (uintptr_t) bt_width);
+         params.emplace_back(GP_attn_num_splits, (void*) (uintptr_t) num_splits);
+-        params.emplace_back(GP_attn_num_splits, (void*) (uintptr_t) num_splits);   // combine kernel
++        if (regime != 2)
++            params.emplace_back(GP_attn_num_splits, (void*) (uintptr_t) num_splits);   // combine kernel
+     }
+     void* yptr = padded ? s.yp.data_ptr() : (void*) y.data_ptr();
+     params.emplace_back(GP_gemm_C, yptr);
+diff --git a/exllamav3/modules/attention_fn/pradium_policy.py b/exllamav3/modules/attention_fn/pradium_policy.py
+new file mode 100644
+--- /dev/null
++++ b/exllamav3/modules/attention_fn/pradium_policy.py
+@@ -0,0 +1,9 @@
++"""CPU-only selection policy for the experimental direct attention graph."""
++def direct_attention_eligible(*, enabled_limit, bsz, q_len, table_pages,
++                              page_size, head_dim, v_head_dim, qsa):
++    # Use the table capacity, not a CPU readback of live GPU lengths. The extra
++    # query accounts for cache append. Regime 2 has its own graph, so crossing
++    # this boundary safely switches back to the existing split/combine graph.
++    return (enabled_limit > 0 and bsz == 1 and q_len == 1 and not qsa
++            and head_dim == v_head_dim and table_pages > 0
++            and table_pages * page_size + q_len <= enabled_limit)

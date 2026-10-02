@@ -1,6 +1,6 @@
 {
   "runtime": "ExLlamaV3",
-  "role": "Runtime A — native/reference EXL3 execution path",
+  "role": "Runtime A \u2014 native/reference EXL3 execution path",
   "version": "1.5.3",
   "commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
   "commit_verified": true,
@@ -58,11 +58,11 @@
     "require_exl3": true
   },
   "normal_optimizations": {
-    "cuda_graphs": "disabled — v1.5.3 has no CUDA-graph capture path",
+    "cuda_graphs": "disabled \u2014 v1.5.3 has no CUDA-graph capture path",
     "continuous_batching": "enabled (Generator default engine behaviour)",
     "prefix_cache": "enabled (automatic content-hashed page table, 256-token pages)",
     "chunked_prefill": "enabled (max_chunk_size = 2048, ExLlamaV3 default)",
-    "kv_cache_dtype": "fp16 (cache_k_bits/cache_v_bits unset — v1.5.3 default)",
+    "kv_cache_dtype": "fp16 (cache_k_bits/cache_v_bits unset \u2014 v1.5.3 default)",
     "speculative_decoding": "disabled (no draft model available for this checkpoint)"
   },
   "verification": {
@@ -71,11 +71,14 @@
     "adapter_conformance": "15/15 passed, 0 skipped (benchmarks/tests/test_adapter_exllamav3.py)",
     "exl3_authenticity": {
       "linear_modules": 295,
-      "quant_type_counts": {"exl3": 295},
+      "quant_type_counts": {
+        "exl3": 295
+      },
       "non_exl3_linears": [],
       "bpw_layer": 4.01267835828993,
       "bpw_head": 6.007935168696385,
       "verdict": "genuine EXL3 execution; no silent dequantization"
     }
-  }
+  },
+  "dependency_lockfile": "environments/exllamav3.pip-freeze.txt (uv pip freeze, 64 packages, includes the exact wheel URL)"
 }
