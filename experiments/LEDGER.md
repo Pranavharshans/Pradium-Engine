@@ -115,6 +115,27 @@ splits are live at short context (25 us per launch at 192 tokens, 47 us at
 tokens vs 1.16 at 1280) confirms the split/combine schedule, not the KV work,
 dominates short-context decode attention.
 
+## In-flight state (2026-10-02 18:00 UTC)
+
+The candidate CUDA extension (`cand-series-0001-0002`: pin + patches 0001/0002)
+is compiling on the VM. The first full build on this 2-physical-core container
+costs hours: ~181 TUs, the `quant/comp_units/*.cu` instantiation units taking
+~2-9 minutes each under `MAX_JOBS=6`. Two build-side findings are recorded for
+reuse: `EXLLAMA_EXT_COMPRESS=0` cuts per-TU time from ~55 s to ~17 s (a
+cubin-container flag, not codegen), and orphaned builders from interrupted
+attempts must be killed explicitly or they duplicate work and starve the box.
+
+A defect in the pre-existing patch 0002 was found by inspection before any
+GPU run: `BC_Attention::configure` still required a combine kernel while the
+direct regime is selected by passing `k_combine = None`, so every direct-regime
+call would have raised. Fixed as `patches/0004-direct-attention-combine-optional.patch`,
+applied to the tree with an incremental rebuild before the rounds.
+
+The measurement campaign (`experiments/tools/run_full_campaign.sh`) is chained
+to the build: EXP-0001 (matrix + SS profile), EXP-0002 (matrix + SS profile),
+direct-vs-split differential, then patch 0003 applied (Python only) and
+EXP-0003 (matrix). Verdicts are recorded here when the rounds land.
+
 ## Revised plan
 
 | ID | Change | Expected | Basis |
