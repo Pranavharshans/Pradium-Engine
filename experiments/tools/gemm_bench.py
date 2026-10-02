@@ -66,13 +66,13 @@ def weight_bytes(inner) -> int:
 def bench_eager(liner, x, out_features, iters, warmup):
     inner = liner.inner
     for _ in range(warmup):
-        liner.bc.run_alloc(x, out_features, False)
+        liner.inner.bc.run_alloc(x, out_features, False)
     torch.cuda.synchronize()
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
     start.record()
     for _ in range(iters):
-        liner.bc.run_alloc(x, out_features, False)
+        liner.inner.bc.run_alloc(x, out_features, False)
     end.record()
     torch.cuda.synchronize()
     return start.elapsed_time(end) / iters
@@ -82,7 +82,7 @@ def bench_graph(liner, x, out_features, iters, warmup, capture_n=16):
     """Capture capture_n calls in one graph; time replay over iters/capture_n."""
     try:
         for _ in range(warmup):
-            liner.bc.run_alloc(x, out_features, False)
+            liner.inner.bc.run_alloc(x, out_features, False)
         torch.cuda.synchronize()
         graph = torch.cuda.CUDAGraph()
         # Warm the private pool so capture has stable allocations
@@ -90,12 +90,12 @@ def bench_graph(liner, x, out_features, iters, warmup, capture_n=16):
         s.wait_stream(torch.cuda.current_stream())
         with torch.cuda.stream(s):
             for _ in range(3):
-                liner.bc.run_alloc(x, out_features, False)
+                liner.inner.bc.run_alloc(x, out_features, False)
         torch.cuda.current_stream().wait_stream(s)
         torch.cuda.synchronize()
         with torch.cuda.graph(graph):
             for _ in range(capture_n):
-                liner.bc.run_alloc(x, out_features, False)
+                liner.inner.bc.run_alloc(x, out_features, False)
         torch.cuda.synchronize()
         replays = max(1, iters // capture_n)
         start = torch.cuda.Event(enable_timing=True)
