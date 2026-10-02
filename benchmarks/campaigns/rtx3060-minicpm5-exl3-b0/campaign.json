@@ -1,0 +1,194 @@
+{
+  "campaign": "PRADIUM-EXL3-RTX3060-B0",
+  "objective": "First real, reproducible, cross-runtime EXL3 baseline on the supplied RTX 3060 12 GB VM. Trustworthy compatibility and performance data, not four bars on a graph.",
+  "benchmark": {
+    "name_in_campaign_spec": "PRADIUM-RUNTIME-BENCH-v1",
+    "resolved_identity": "PRADIUM-RUNTIME-BENCH-v2",
+    "resolution_note": "The campaign spec names PRADIUM-RUNTIME-BENCH-v1. The repository's frozen identity is PRADIUM-RUNTIME-BENCH-v2: the VERSION file read PRADIUM-RUNTIME-BENCH-v1 at commit 32ecc1f (its first commit) and was bumped to v2 at HEAD commit cf4e875, whose subject is 'Fix benchmark cache fairness, timing, deadlines and batch accounting'. v2 is the version-bumped successor of v1 and contains genuine measurement-fairness fixes, so the campaign freezes on the committed HEAD. No benchmark definition, prompt, length, warmup count, run count or metric formula was modified.",
+    "pradium_git_branch_at_start": "bench/generic-runtime-benchmark-v1",
+    "pradium_git_commit_at_start": "cf4e8754e6edcf588ebf0a207472e19c24f233d3",
+    "v1_commit": "32ecc1f",
+    "frozen_components_unchanged": [
+      "prompt corpus",
+      "token-length definitions",
+      "workload definitions",
+      "output lengths",
+      "timing definitions",
+      "warmup count",
+      "measured-run count",
+      "statistical methodology",
+      "concurrency methodology",
+      "cache test methodology"
+    ],
+    "repeat_policy": {
+      "warmups": 3,
+      "measured_runs": 10,
+      "headline_statistic": "median",
+      "also_retained": ["mean", "standard_deviation", "p95", "p99", "min", "max"]
+    },
+    "core_matrix": [
+      "SS = 128 input / 64 output",
+      "SM = 128 input / 256 output",
+      "SL = 128 input / 1024 output",
+      "MS = 1024 input / 64 output",
+      "MM = 1024 input / 256 output",
+      "ML = 1024 input / 1024 output",
+      "LS = 4096 input / 64 output",
+      "LM = 4096 input / 256 output",
+      "LL = 4096 input / 1024 output"
+    ]
+  },
+  "hardware": {
+    "gpu_model": "NVIDIA GeForce RTX 3060",
+    "gpu_uuid": "GPU-9bdacdb0-33f1-e196-6c1f-dc65129fb653",
+    "gpu_count": 1,
+    "architecture": "Ampere",
+    "compute_capability": "8.6",
+    "vram_total_mb": 12288,
+    "nvidia_driver": "550.144.03",
+    "driver_max_cuda_runtime": "12.4",
+    "system_cuda_toolkit": "12.8.93 (nvcc V12.8.93)",
+    "idle_power_w": 15,
+    "power_limit_w": 170,
+    "cpu": "Intel(R) Pentium(R) Gold G5420 CPU @ 3.80GHz",
+    "cpu_physical_cores": 2,
+    "cpu_logical_cores": 4,
+    "system_ram_gib": 31,
+    "disk_free_at_start": "80G overlay (container, not a host volume)",
+    "os": "Ubuntu 24.04.4 LTS",
+    "kernel": "6.8.0-60-generic",
+    "container_note": "Unprivileged Docker container, not a full VM: no Docker-in-Docker, no kernel modules. This is why the trellis-serve published image could not be used directly.",
+    "hostname": "ca6dc30d4cd0"
+  },
+  "model": {
+    "repo": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+    "frozen_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "base_model": "openbmb/MiniCPM5-2B",
+    "base_model_revision_observed": "f97400052a43d642bbc6e9975e2397e3ae6a6b52",
+    "quantization": "EXL3",
+    "nominal_bpw": 4.0,
+    "head_bits": 6,
+    "codebook": "mul1",
+    "out_scales": "always",
+    "exl3_quantizer_version": "1.4.6",
+    "architecture": "LlamaForCausalLM",
+    "model_type": "llama",
+    "num_hidden_layers": 42,
+    "hidden_size": 2048,
+    "intermediate_size": 6144,
+    "num_attention_heads": 16,
+    "num_key_value_heads": 2,
+    "head_dim": 128,
+    "vocab_size": 130560,
+    "max_position_embeddings": 131072,
+    "tie_word_embeddings": false,
+    "checkpoint_size_bytes": 1740500926,
+    "checkpoint_size_gib": 1.621,
+    "shard_count": 1,
+    "has_model_safetensors_index": false,
+    "canonical_dir": "/workspace/models/minicpm5-2b-exl3",
+    "download_timestamp_utc": "2026-10-02T07:15:00Z",
+    "verified_measured": {
+      "bpw_layer": 4.01267835828993,
+      "bpw_head": 6.007935168696385,
+      "linear_modules_all_exl3": 295,
+      "non_exl3_linears": 0
+    },
+    "hashes": {
+      "config.json": "dfc339b30dd6055b815a7e546b415345074e51eb7485b0571ac933203e1ea536",
+      "generation_config.json": "9ac4f32e5f32358697a9f438a3ea89ef80e6ba786c72c49e932f9f21c122fdb1",
+      "quantization_config.json": "b176f78672cf686c9bda9fac0f973fab648364aba96349f5bcb0f9880bca0dc9",
+      "tokenizer.json": "3e065a558a034185fe299917b398685c1facd0169a9eea1e629eb30c171fed81",
+      "tokenizer_config.json": "e9b1064649e771d7a8e15637c68b2d2749724877ba3648bd74a4ece31c26303b",
+      "special_tokens_map.json": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db",
+      "chat_template.jinja": "cc945752db555d60949b16989df4ccfeb52a313d6b4b5c5229dd786e2e9fcf1c",
+      "model.safetensors": "4a310a644144c54f8146c3dbf58fcedc5ab97e8198d21e241c09fcfad5b6b2be",
+      "model.safetensors.header_sha256": "55e9ea37a9d43c61bf673ccf144d7cc907d3369936cc34902b22897c61eac9e6",
+      "model.safetensors.data_section_sha256": "ce4150b52c24e17ad10b3afb3d37f45b2cfcb8b9cd87fac25eada879d1c97256",
+      "model.safetensors.tensor_manifest_sha256": "57b2969f1f0a867bb85bd96a927ac801b8361577da52d5ad1cef9af444da2a6b"
+    },
+    "tensor_layout": {
+      "quantized_linear_tensors": ["trellis", "suh", "svh", "mul1"],
+      "note": "Standard exllamav3 EXL3 linear tensor group. quantization_config.json is produced by exllamav3/conversion/quant_config.py (create_quantization_config_json), i.e. it is an exllamav3-native artifact, not a third-party format."
+    }
+  },
+  "prompt_materialization": {
+    "tokenizer": "ewin-reg/MiniCPM5-2B-EXL3-Quantized",
+    "tokenizer_revision": "e36fbb568f466739d7c244a5100d01acf93d3b7f",
+    "method": "python -m benchmarks corpus materialize --tokenizer hf:ewin-reg/MiniCPM5-2B-EXL3-Quantized@<revision>",
+    "materialized_once": true,
+    "consumed_by_runtimes_as": "BenchmarkRequest.input_ids (pre-tokenized; no runtime re-tokenizes)",
+    "side_manifest": "benchmarks/corpus/materialized/ewin-reg/MiniCPM5-2B-EXL3-Quantized/manifest.json"
+  },
+  "runtimes": {
+    "exllamav3": {
+      "role": "Runtime A - native/reference EXL3 execution path",
+      "repo": "turboderp-org/exllamav3",
+      "pinned_version": "v1.5.3",
+      "pinned_commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
+      "verified_commit": "d3739fd393337b1ff4d6c2a342b12f0c87a9592f",
+      "install": "upstream prebuilt wheel exllamav3-1.5.3+cu128.torch2.10.0-cp312-cp312-linux_x86_64.whl (matches pinned tag; Python 3.12 / torch 2.10.0 / CUDA 12.8)",
+      "status": "SUPPORTED_NATIVE"
+    },
+    "sglang_exl3": {
+      "role": "Runtime B - EXL3 path on NVIDIA Ampere",
+      "repo": "sgl-project/sglang",
+      "pinned_version": "v0.5.20",
+      "pinned_commit": "94602c9c2b7cbdb8efd5c52802dac6a1c180089e",
+      "verified_commit": "94602c9c2b7cbdb8efd5c52802dac6a1c180089e",
+      "plugin_repo": "0xSero/trellis-serve",
+      "plugin_commit": "1ace59c4b43ca16a50fb6b7acf8b3fd7e2351f96",
+      "verified_plugin_commit": "1ace59c4b43ca16a50fb6b7acf8b3fd7e2351f96",
+      "cuda_package": "sglang_exl3",
+      "status": "INSTALL_FAILURE"
+    },
+    "vllm_exl3": {
+      "role": "Runtime C - out-of-tree EXL3 integration",
+      "repo": "vllm-project/vllm",
+      "pinned_version": "v0.30.0",
+      "pinned_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+      "verified_commit": "ced6857afa0ea7b2e3f0846a62e1394e90f15607",
+      "plugin_repo": "vcruz305/vllm-exl3",
+      "plugin_commit": "223e246ff8da552d2ace976c4bcbed804a8ec04c",
+      "verified_plugin_commit": "223e246ff8da552d2ace976c4bcbed804a8ec04c",
+      "status": "INSTALL_FAILURE"
+    },
+    "tensorfold": {
+      "role": "Runtime D - compatibility determination only",
+      "repo": "ashhart/TensorFold",
+      "pinned_version": "0.6.1",
+      "pinned_commit": "17c73e189f5e6a5304cda7ea37f086f9c49b4788",
+      "verified_commit": "17c73e189f5e6a5304cda7ea37f086f9c49b4788",
+      "status": "UNSUPPORTED_MODEL"
+    }
+  },
+  "headline_blocker": {
+    "issue": "The supplied VM's NVIDIA driver (550.144.03, CUDA 12.4) cannot execute a CUDA 13 runtime, so the pinned SGLang 0.5.20 and vLLM 0.30.0 stacks cannot run here.",
+    "evidence_1": "SGLang 0.5.20 hard-pins torch==2.13.0; vLLM 0.30.0 hard-pins torch==2.13.0.",
+    "evidence_2": "torch==2.13.0 on PyPI is a CUDA 13.0 build: requires cuda-toolkit[...]==13.0.3, nvidia-cudnn-cu13==9.20.0.48, nvidia-nccl-cu13, nvidia-nvshmem-cu13, cuda-bindings>=13.0.3.",
+    "evidence_3": "torch 2.13.0 has no CUDA 12 build on any PyTorch index (cu126/cu128/cu129 newest is 2.9.1), so no CUDA 12 path exists for those pins.",
+    "evidence_4": "Direct runtime probe: loading the CUDA 13 runtime reports cudaRuntimeGetVersion = 13.0 while cudaDriverGetVersion = 12.4, and cudaSetDevice(0) returns 35 (cudaErrorInsufficientDriver, 'CUDA driver version is insufficient for CUDA runtime version').",
+    "evidence_5": "The VM is an unprivileged container, so the host driver cannot be upgraded, and the trellis-serve published Docker image ghcr.io/0xsero/sglang-exl3:v0.7.0-ampere cannot be used because Docker-in-Docker is unavailable.",
+    "consequence": "Runtime B and Runtime C are recorded as INSTALL_FAILURE with the driver/CUDA-major mismatch as the cause. This is a property of the supplied environment, NOT a finding about EXL3 support in SGLang or vLLM, and NOT about MiniCPM5."
+  },
+  "no_substitutions": {
+    "model_substituted": false,
+    "re_quantized": false,
+    "other_format_used": false,
+    "third_party_kernels_modified": false,
+    "pradium_optimized": false
+  },
+  "campaign_timestamps_utc": {
+    "started": "2026-10-02T07:09:00Z",
+    "model_downloaded": "2026-10-02T07:17:00Z",
+    "model_hashed": "2026-10-02T07:37:00Z",
+    "exllamav3_smoke_passed": "2026-10-02T08:10:00Z",
+    "campaign_branch_created": "2026-10-02T08:20:00Z"
+  },
+  "workspace_layout": {
+    "pradium": "/workspace/pradium",
+    "models": "/workspace/models/minicpm5-2b-exl3",
+    "runtimes": ["/workspace/runtimes/exllamav3", "/workspace/runtimes/trellis-serve", "/workspace/runtimes/tensorfold"],
+    "envs": ["/workspace/envs/exllamav3", "/workspace/envs/pradium", "/workspace/envs/tools", "/workspace/envs/driverprobe", "/workspace/envs/tensorfold"]
+  }
+}

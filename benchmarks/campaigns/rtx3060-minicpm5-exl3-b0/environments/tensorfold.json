@@ -1,0 +1,38 @@
+{
+  "runtime": "TensorFold",
+  "role": "Runtime D — compatibility determination only (no performance row)",
+  "version": "0.6.1",
+  "commit": "17c73e189f5e6a5304cda7ea37f086f9c49b4788",
+  "commit_verified": true,
+  "commit_verification": "git ls-remote ashhart/TensorFold: annotated tag v0.6.1 dereferences to 17c73e189f5e6a5304cda7ea37f086f9c49b4788; the pin matches",
+  "plugin": null,
+  "plugin_commit": null,
+  "installed": true,
+  "installed_version": "0.6.1",
+  "install_method": "uv pip install --no-deps /workspace/runtimes/tensorfold (pinned checkout), env /workspace/envs/tensorfold",
+  "status": "UNSUPPORTED_MODEL",
+  "benchmark_status": "not runnable on this GPU, and no MiniCPM family exists at this revision",
+  "blockers": [
+    {
+      "class": "UNSUPPORTED_MODEL",
+      "detail": "No MiniCPM / dense-Llama family at the pinned revision. The family registry is bonsai, deepseek_v4, gemma4, glm5_next, nemotron_h, qwen3_5, qwen3_5_moe, qwen4_exp (src/tensorfold/families/), and grep -ri minicpm over the repository returns no matches. `tensorfold models` lists EXL3 only for GLM-5.3-Flash (Mia-AiLab/GLM-5.3-Flash-EXL3-TR3-4bpw), Qwen3.8-27B (turboderp/Qwen3.8-27B-exl3) and Qwen3.8 Flash Next (turboderp/Qwen3.8-Flash-Next-exl3).",
+      "conclusion": "Even on supported hardware, the pinned TensorFold cannot serve this checkpoint, and no porting was attempted (explicitly out of scope)."
+    },
+    {
+      "class": "HARDWARE_REFUSED",
+      "detail": "src/tensorfold/cuda/build.py:13 sets MIN_CAPABILITY = (8, 9) with the comment 'FP8 MMA and e4m3 conversions (Ada)', and refuse_old_gpu() is documented as running 'At startup, before any weight loads'. src/tensorfold/cuda/capacity.py:269 states '8.9 for every format'.",
+      "empirical_result": {
+        "command": "from tensorfold.cuda.build import refuse_old_gpu; refuse_old_gpu()",
+        "torch": "2.10.0+cu128",
+        "gpu": "NVIDIA GeForce RTX 3060",
+        "capability": "8.6",
+        "raised": "ValueError: TensorFold's CUDA kernels need compute capability 8.9 or newer (FP8 MMA); this GPU (NVIDIA GeForce RTX 3060) is 8.6"
+      },
+      "readme_corroboration": "The repository README states RTX 30 cards (8.6) aren't supported and that the server refuses a GPU below 8.9 at startup."
+    }
+  ],
+  "no_substitution": {
+    "benchmarked_a_supported_model_instead": false,
+    "reason": "TensorFold supports Qwen / Nemotron / GLM / Gemma / DeepSeek families, but placing another checkpoint's numbers beside MiniCPM5 EXL3 would not be a cross-runtime comparison of the same model, so TensorFold contributes no performance row."
+  }
+}

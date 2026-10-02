@@ -1,0 +1,59 @@
+{
+  "runtime": "SGLang",
+  "role": "Runtime B — EXL3 path on NVIDIA Ampere",
+  "label": "SGLang 0.5.20 + sglang_exl3",
+  "version": "0.5.20",
+  "commit": "94602c9c2b7cbdb8efd5c52802dac6a1c180089e",
+  "commit_verified": true,
+  "commit_verification": "git ls-remote sgl-project/sglang: refs/tags/v0.5.20 dereferences to 94602c9c2b7cbdb8efd5c52802dac6a1c180089e, which also equals refs/heads/release/v0.5.20; the 7-character pin '94602c9' matches",
+  "plugin": "0xSero/trellis-serve (cuda/ package: sglang_exl3)",
+  "plugin_commit": "1ace59c4b43ca16a50fb6b7acf8b3fd7e2351f96",
+  "plugin_commit_verified": true,
+  "cuda_package": "sglang_exl3",
+  "status": "INSTALL_FAILURE",
+  "benchmark_status": "not runnable on this VM",
+  "failure_class": "driver / CUDA-major incompatibility in the supplied environment (NOT a model or EXL3 support finding)",
+  "plugin_inspection": {
+    "entry_point": "sglang.srt.plugins -> exl3 = sglang_exl3.plugin:activate",
+    "registers": "--quantization exl3",
+    "min_capability_declared": 80,
+    "kernel_backends": ["auto", "exllamav3", "marlin"],
+    "note": "With trellis_exl3_kernels absent, SGLANG_EXL3_KERNEL=auto falls back to ExLlamaV3's own bit-faithful kernels (linear.py: 'if _MARLIN in (\"auto\",\"marlin\") and marlin.probe().available'), so a Marlin build is not strictly required to run the plugin. This was verified in source but never reached at runtime because the core runtime is not installable.",
+    "upstream_reference_image": "ghcr.io/0xsero/sglang-exl3:v0.7.0-ampere@sha256:c8922bd7256caf1b273af7ac49221e652be9e6072c1cdec4b959f506fd415d79 (not usable: the VM is an unprivileged container without Docker-in-Docker)"
+  },
+  "blocker": {
+    "summary": "sglang==0.5.20 hard-pins torch==2.13.0, which exists only as a CUDA 13.0 build; this VM's driver (550.144.03) supports CUDA 12.4 maximum.",
+    "resolved_dependencies_of_the_pin": {
+      "torch": "2.13.0",
+      "nvidia-cudnn-cu13": "9.20.0.48",
+      "nvidia-nvshmem-cu13": "3.4.5",
+      "nvidia-cuda-crt": "13.4.92",
+      "nvidia-cuda-nvcc": "13.4.92",
+      "nvidia-cuda-nvrtc": "13.0.88",
+      "flashinfer-python": "0.6.18",
+      "sglang-kernel": "0.4.7",
+      "cuda-python": ">=13.0",
+      "packages_total": 200
+    },
+    "torch_2_13_0_cuda_profile": "CUDA 13.0: cuda-toolkit[cublas,cudart,...]==13.0.3, nvidia-cudnn-cu13==9.20.0.48, nvidia-nccl-cu13==2.29.7, nvidia-nvshmem-cu13==3.4.5, cuda-bindings>=13.0.3",
+    "no_cuda12_path": "PyTorch index cu126 / cu128 / cu129 newest torch is 2.9.1; torch 2.13.0 is published only for CUDA 13, so the torch==2.13.0 pin cannot be satisfied with a CUDA 12 build.",
+    "runtime_probe": {
+      "method": "installed cuda-toolkit[cudart]==13.0.3 in a scratch env and loaded the CUDA 13 runtime directly",
+      "cudaRuntimeGetVersion": "13.0",
+      "cudaDriverGetVersion": "12.4",
+      "cudaSetDevice_0": "rc=35",
+      "cudaGetErrorString": "CUDA driver version is insufficient for CUDA runtime version",
+      "probe_env_versions": {"cuda-python": "13.4.1", "cuda-toolkit": "13.0.3.0"}
+    },
+    "driver_upgrade_possible": false,
+    "driver_upgrade_note": "Unprivileged container; the NVIDIA kernel driver is host-managed and cannot be changed from inside."
+  },
+  "not_attempted_by_design": [
+    "modifying trellis-serve or sglang_exl3",
+    "writing new kernels",
+    "porting MiniCPM model architecture into SGLang",
+    "rewriting checkpoint metadata",
+    "substituting another model or another quantization format"
+  ],
+  "re_run_requirement": "Re-attempt on a host whose driver supports CUDA 13 (r580+). The MiniCPM5 compatibility gate (architecture, EXL3 tensor layout, dense linears, embeddings, lm_head) must still be passed empirically; nothing in this campaign proves or disproves it."
+}
