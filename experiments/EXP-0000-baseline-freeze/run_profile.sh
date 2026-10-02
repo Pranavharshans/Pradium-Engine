@@ -14,7 +14,7 @@ OUT=${OUT:-$REPO/experiments/EXP-0000-baseline-freeze/results}
 MODEL_DIR=${MODEL_DIR:-/workspace/models/minicpm5-2b-exl3}
 
 source "/workspace/envs/${ENV_NAME}/bin/activate"
-export PYTHONPATH="$REPO"
+export PYTHONPATH="${EXTRA_PYTHONPATH:+${EXTRA_PYTHONPATH}:}${REPO}"
 export HF_HOME=/workspace/.hf_home
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
