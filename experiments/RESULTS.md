@@ -34,6 +34,21 @@ pure weight-read floor is **3.6 ms/token** — i.e. a 2.00x decode step
 sync into 0.85 ms. That is not reachable; measured best-case composition is
 ~5.5-6 ms (1.5-1.6x).
 
+Per-shape EXL3 bandwidth (graph-timed, `tools/gemm_bench.py`), the arithmetic
+behind that conclusion:
+
+| shape | MB read/token | ms | GB/s | vs head |
+|---|---|---|---|---|
+| LM head 130560x2048 (6 bpw) | 191.5 | 0.625 | 321 | 97% of peak |
+| gate/up 2048x6144 | 12.04 | 0.050 | 241 | 75% |
+| down 6144x2048 | 6.02 | 0.024 | 249 | 78% |
+| qkv 2048x2048-ish | 2.5 | 0.013 | 199 | 62% |
+
+Even if every layer GEMM ran at the head's 321 GB/s, the layer weights alone
+would take 3.1 ms; the measured kernels take 4.9 ms, and the forced-shape
+sweep shows no available kernel closes that gap — it is a kernel property at
+M=1, not a dispatch choice.
+
 ## 3. Experiment results
 
 (filled in as rounds complete)
