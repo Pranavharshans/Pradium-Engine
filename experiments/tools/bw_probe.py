@@ -33,15 +33,17 @@ def main() -> int:
 
     ms = timed(lambda: y.copy_(x))
     copy_gb_s = (2 * n * 4) / (ms / 1000.0) / 1e9
+    print("copy: %.3f ms -> %.1f GB/s (read+write)" % (ms, copy_gb_s), flush=True)
 
-    ms_sum = timed(lambda: torch.sum(x, out=out))
+    ms_sum = timed(lambda: x.sum())
     sum_gb_s = (n * 4) / (ms_sum / 1000.0) / 1e9
+    print("sum fp32: %.3f ms -> %.1f GB/s (read)" % (ms_sum, sum_gb_s), flush=True)
 
     # 16-bit read (closer to the GEMM's weight stream)
     xh = torch.randn(n, dtype=torch.half, device="cuda:0")
-    outh = torch.empty((), dtype=torch.half, device="cuda:0")
-    ms_h = timed(lambda: torch.sum(xh, out=outh))
+    ms_h = timed(lambda: xh.sum())
     sum_h_gb_s = (n * 2) / (ms_h / 1000.0) / 1e9
+    print("sum fp16: %.3f ms -> %.1f GB/s (read)" % (ms_h, sum_h_gb_s), flush=True)
 
     result = {
         "device": torch.cuda.get_device_name(0),
